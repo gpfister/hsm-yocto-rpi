@@ -10,6 +10,8 @@ SRC_URI = " \
     file://hsm-setup-volatile.sh \
 "
 
+RDEPENDS:${PN} += "bash"
+
 SYSTEMD_SERVICE:${PN} = "hsm-volatile-storage.service"
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 

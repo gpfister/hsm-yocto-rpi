@@ -1,20 +1,15 @@
-#!/bin/bash
+#!/bin/sh
 # ==============================================================================
 # rauc-usb-autoinstall.sh - Offline USB RAUC Bundle Ingestion Service
 # ==============================================================================
-set -euo pipefail
+set -eu
 
 echo "==> Scanning mounted USB media for signed RAUC update bundles..."
 
-shopt -s nullglob
-BUNDLES=(/media/usb-*/*.raucb)
-
-if [[ ${#BUNDLES[@]} -eq 0 ]]; then
-    echo "No .raucb bundles found on connected USB devices."
-    exit 0
-fi
-
-for BUNDLE in "${BUNDLES[@]}"; do
+found=0
+for BUNDLE in /media/usb-*/*.raucb; do
+    [ -f "${BUNDLE}" ] || continue
+    found=1
     echo "=================================================================="
     echo "Found RAUC Update Bundle: ${BUNDLE}"
     echo "=================================================================="
@@ -36,3 +31,8 @@ for BUNDLE in "${BUNDLES[@]}"; do
         echo "Error: Bundle verification failed! Untrusted or corrupt image." >&2
     fi
 done
+
+if [ "${found}" -eq 0 ]; then
+    echo "No .raucb bundles found on connected USB devices."
+fi
+exit 0

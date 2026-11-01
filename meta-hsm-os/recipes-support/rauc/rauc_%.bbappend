@@ -7,6 +7,8 @@ SRC_URI += " \
     file://rauc-usb-autoinstall.sh \
 "
 
+RDEPENDS:${PN} += "bash"
+
 do_install:append() {
     install -d ${D}${sysconfdir}/rauc
     install -m 0644 ${WORKDIR}/system.conf ${D}${sysconfdir}/rauc/system.conf
