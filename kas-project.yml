@@ -61,6 +61,13 @@ local_conf_header:
     DISABLE_RPI_BOOT_LOGO = "1"
     BOOT_DELAY = "0"
     
+    # License Flags (Broadcom / Synaptics wireless firmware for Raspberry Pi)
+    LICENSE_FLAGS_ACCEPTED += "synaptics-killswitch"
+
+    # Air-Gapped Machine Features: Remove WiFi and Bluetooth from hardware packages
+    MACHINE_FEATURES:remove = "bluetooth wifi"
+    MACHINE_FEATURES_BACKFILL_CONSIDERED += "bluetooth wifi"
+
     # RAUC Keys and Certificates
     RAUC_KEYRING_FILE = "${TOPDIR}/../keys/rauc-ca.cert.pem"
     RAUC_KEY_FILE = "${TOPDIR}/../keys/development-signing.key.pem"
