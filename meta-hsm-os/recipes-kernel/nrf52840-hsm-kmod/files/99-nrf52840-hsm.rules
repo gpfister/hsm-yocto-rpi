@@ -1,0 +1,5 @@
+# /etc/udev/rules.d/99-nrf52840-hsm.rules
+# Grant dialout group full read/write access to nRF52840 HSM character devices
+KERNEL=="tty.hsm*", GROUP="dialout", MODE="0660", TAG+="systemd"
+# Create convenience symlink /dev/tty.hsm pointing to primary HSM device node
+KERNEL=="tty.hsm*0", SYMLINK+="tty.hsm"

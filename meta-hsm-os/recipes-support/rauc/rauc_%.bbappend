@@ -20,6 +20,7 @@ do_install:append() {
 }
 
 SYSTEMD_SERVICE:${PN} += "rauc-usb-autoinstall.service"
+SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
 FILES:${PN} += " \
     ${sysconfdir}/rauc/system.conf \

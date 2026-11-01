@@ -1,0 +1,14 @@
+[Unit]
+Description=RAM-Only Volatile Overlays and Tmpfs for Air-Gapped HSM OS
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=sysinit.target local-fs.target systemd-sysusers.service
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/hsm-setup-volatile.sh
+
+[Install]
+WantedBy=sysinit.target

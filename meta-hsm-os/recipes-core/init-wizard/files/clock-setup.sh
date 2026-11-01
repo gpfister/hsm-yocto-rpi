@@ -22,7 +22,9 @@ echo ""
 read -r -p "Enter current UTC date/time [YYYY-MM-DD HH:MM:SS] (or Enter to keep): " USER_DATE
 
 if [[ -n "${USER_DATE}" ]]; then
-    if sudo -n true 2>/dev/null; then
+    if command -v hsm-set-date >/dev/null 2>&1; then
+        hsm-set-date "${USER_DATE}"
+    elif sudo -n true 2>/dev/null; then
         sudo date -u -s "${USER_DATE}" || echo "Failed to set date."
     elif command -v date >/dev/null 2>&1; then
         date -u -s "${USER_DATE}" 2>/dev/null || echo "Note: Root privileges required to adjust clock."

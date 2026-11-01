@@ -35,6 +35,14 @@ case "${ACTION}" in
                 ;;
         esac
         echo "Mounted ${DEVICE} at ${MOUNT_POINT} (user hsmutil rw)"
+
+        # Check for RAUC update bundle on newly mounted device
+        shopt -s nullglob
+        BUNDLES=("${MOUNT_POINT}"/*.raucb)
+        if [[ ${#BUNDLES[@]} -gt 0 ]]; then
+            echo "RAUC update bundle detected on ${MOUNT_POINT}, triggering auto-install service..."
+            systemctl start rauc-usb-autoinstall.service || true
+        fi
         ;;
 
     remove)

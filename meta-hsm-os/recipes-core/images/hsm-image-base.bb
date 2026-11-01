@@ -12,11 +12,14 @@ IMAGE_INSTALL:append = " \
     nrf52840-hsm-kmod \
     nftables \
     nftables-rules \
+    volatile-storage \
+    systemd-journald-airgap \
     hsmutil-user \
     init-wizard \
     hsmutil \
     usb-mount \
     rauc \
+    libubootenv-bin \
     bash \
     kbd \
     tzdata \

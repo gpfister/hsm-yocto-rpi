@@ -3,6 +3,10 @@ DESCRIPTION = "Development image with debugging tools, root console access, and 
 
 require hsm-image-base.bb
 
+inherit extrausers
+# Root password 'root' (SHA-512 crypt hash)
+EXTRA_USERS_PARAMS = "usermod -p '\$6\$saltsalt\$bAY90rAsHhyx.bxmKP9FE5UF4jP1iWgjV0ltM6ZJxfYkiIaCExjBZIbfmqmZEWoR65aM.1nFvG7fF3gYOjHpM.' root;"
+
 IMAGE_FEATURES += "debug-tweaks tools-debug"
 
 IMAGE_INSTALL:append = " \

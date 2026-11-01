@@ -7,14 +7,20 @@ SRC_URI = " \
     file://first-login-wizard.sh \
     file://clock-setup.sh \
     file://hsm-profile.sh \
+    file://hsm-set-date.c \
 "
 
 RDEPENDS:${PN} += "bash kbd util-linux tzdata"
+
+do_compile() {
+    ${CC} ${CFLAGS} ${LDFLAGS} ${WORKDIR}/hsm-set-date.c -o ${WORKDIR}/hsm-set-date
+}
 
 do_install() {
     install -d ${D}/usr/local/bin
     install -m 0755 ${WORKDIR}/first-login-wizard.sh ${D}/usr/local/bin/first-login-wizard.sh
     install -m 0755 ${WORKDIR}/clock-setup.sh ${D}/usr/local/bin/clock-setup.sh
+    install -m 4755 ${WORKDIR}/hsm-set-date ${D}/usr/local/bin/hsm-set-date
 
     install -d ${D}${sysconfdir}/profile.d
     install -m 0644 ${WORKDIR}/hsm-profile.sh ${D}${sysconfdir}/profile.d/hsm-login.sh
@@ -23,5 +29,6 @@ do_install() {
 FILES:${PN} += " \
     /usr/local/bin/first-login-wizard.sh \
     /usr/local/bin/clock-setup.sh \
+    /usr/local/bin/hsm-set-date \
     ${sysconfdir}/profile.d/hsm-login.sh \
 "

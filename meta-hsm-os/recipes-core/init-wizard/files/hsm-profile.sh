@@ -1,5 +1,6 @@
 # /etc/profile.d/hsm-login.sh
-if [ -n "$PS1" ] && [ "$(id -u)" != "0" ]; then
+# Execute initial setup wizard and clock prompt on interactive console logins
+if [ -t 0 ] && [ "$(id -u)" != "0" ]; then
     if [ -x /usr/local/bin/first-login-wizard.sh ]; then
         /usr/local/bin/first-login-wizard.sh
     fi
