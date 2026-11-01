@@ -1,0 +1,20 @@
+header:
+  version: 14
+  includes:
+    - kas-project.yml
+
+target: hsm-image-prod
+
+local_conf_header:
+  prod_hardening: |
+    # Production hardening: Disable all debug features
+    EXTRA_IMAGE_FEATURES = ""
+    
+    # Kernel Module in Production Mode: Strictly exposes AT crypto channel (/dev/tty.hsm<ble>0)
+    HSM_DEV_MODE = "0"
+    
+    # Silent boot and suppress kernel console logs
+    APPEND += "quiet loglevel=0 console=tty1 fsck.mode=skip"
+    
+    # Read-only rootfs enforcement
+    IMAGE_FEATURES += "read-only-rootfs"

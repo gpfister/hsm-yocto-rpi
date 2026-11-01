@@ -1,0 +1,64 @@
+header:
+  version: 14
+
+machine: ${KAS_MACHINE:raspberrypi0-2w-64}
+distro: poky
+target: hsm-image-base
+
+repos:
+  poky:
+    url: https://git.yoctoproject.org/poky
+    refspec: scarthgap
+    layers:
+      meta:
+      meta-poky:
+      meta-yocto-bsp:
+
+  meta-openembedded:
+    url: https://github.com/openembedded/meta-openembedded.git
+    refspec: scarthgap
+    layers:
+      meta-oe:
+      meta-python:
+      meta-networking:
+      meta-filesystems:
+
+  meta-raspberrypi:
+    url: https://github.com/agherzan/meta-raspberrypi.git
+    refspec: scarthgap
+
+  meta-rauc:
+    url: https://github.com/rauc/meta-rauc.git
+    refspec: scarthgap
+
+  meta-rauc-community:
+    url: https://github.com/rauc/meta-rauc-community.git
+    refspec: scarthgap
+    path: meta-rauc-raspberrypi
+
+  meta-hsm-os:
+    path: meta-hsm-os
+
+local_conf_header:
+  base_settings: |
+    # Distribution and Init Manager
+    INIT_MANAGER = "systemd"
+    DISTRO_FEATURES:append = " systemd rauc"
+    DISTRO_FEATURES_BACKFILL_CONSIDERED += "sysvinit"
+    VIRTUAL-RUNTIME_init_manager = "systemd"
+    VIRTUAL-RUNTIME_initscripts = "systemd-compat-units"
+
+    # Image Packaging and Bootloader
+    IMAGE_FSTYPES = "tar.bz2 wic.bz2 wic.bmap"
+    RPI_USE_U_BOOT = "1"
+    ENABLE_UART = "1"
+    DISABLE_RPI_BOOT_LOGO = "1"
+    BOOT_DELAY = "0"
+    
+    # RAUC Keys and Certificates
+    RAUC_KEYRING_FILE = "${TOPDIR}/../keys/rauc-ca.cert.pem"
+    RAUC_KEY_FILE = "${TOPDIR}/../keys/development-signing.key.pem"
+    RAUC_CERT_FILE = "${TOPDIR}/../keys/development-signing.cert.pem"
+
+    # Air-Gapped Network Disablement (no package feed)
+    PACKAGE_FEED_URIS = ""

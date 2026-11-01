@@ -1,0 +1,4 @@
+# /etc/udev/rules.d/99-usb-storage-mount.rules
+# Trigger systemd automount service on USB mass storage block partition insertion
+KERNEL=="sd[a-z][0-9]*", SUBSYSTEMS=="usb", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}="usb-mount@%k.service"
+KERNEL=="sd[a-z][0-9]*", SUBSYSTEMS=="usb", ACTION=="remove", RUN+="/usr/local/bin/usb-mount.sh remove %k"

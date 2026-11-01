@@ -1,0 +1,17 @@
+header:
+  version: 14
+  includes:
+    - kas-project.yml
+
+target: hsm-image-dev
+
+local_conf_header:
+  dev_tweaks: |
+    # Development image features (sudo, debug tools, root password enabled)
+    EXTRA_IMAGE_FEATURES += "debug-tweaks tools-debug"
+    
+    # Kernel Module in Dev Mode: Exposes both AT channel and debug console port
+    HSM_DEV_MODE = "1"
+    
+    # Enable verbose boot logging for diagnostic purposes
+    APPEND += "debug earlyprintk"

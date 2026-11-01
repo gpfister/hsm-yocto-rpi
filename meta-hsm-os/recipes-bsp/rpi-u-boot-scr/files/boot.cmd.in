@@ -1,0 +1,38 @@
+# U-Boot bootscript with RAUC A/B Dual-Slot Support
+test -n "${BOOT_ORDER}" || env set BOOT_ORDER "A B"
+test -n "${BOOT_A_LEFT}" || env set BOOT_A_LEFT 3
+test -n "${BOOT_B_LEFT}" || env set BOOT_B_LEFT 3
+
+setenv rauc_slot ""
+
+for slot in ${BOOT_ORDER}; do
+    if test "x${rauc_slot}" != "x"; then
+        # Slot already chosen
+    elif test "x${slot}" = "xA"; then
+        if test ${BOOT_A_LEFT} -gt 0; then
+            setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1
+            echo "RAUC: Booting Slot A (Remaining attempts: ${BOOT_A_LEFT})"
+            setenv rauc_slot "A"
+            setenv rootdev "/dev/mmcblk0p2"
+        fi
+    elif test "x${slot}" = "xB"; then
+        if test ${BOOT_B_LEFT} -gt 0; then
+            setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1
+            echo "RAUC: Booting Slot B (Remaining attempts: ${BOOT_B_LEFT})"
+            setenv rauc_slot "B"
+            setenv rootdev "/dev/mmcblk0p3"
+        fi
+    fi
+done
+
+saveenv
+
+if test -z "${rauc_slot}"; then
+    echo "RAUC: No valid boot slots remaining! Halting."
+    reset
+fi
+
+setenv bootargs "${bootargs} root=${rootdev} rootwait rauc.slot=${rauc_slot}"
+load mmc 0:1 ${kernel_addr_r} @@KERNEL_IMAGETYPE@@
+load mmc 0:1 ${fdt_addr_r} @@KERNEL_BOOTCMD@@.dtb || true
+@@KERNEL_BOOTCMD@@ ${kernel_addr_r} - ${fdt_addr_r}

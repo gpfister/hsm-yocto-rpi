@@ -1,0 +1,13 @@
+[Unit]
+Description=RAUC USB Offline Update Bundle Auto-Installer
+After=rauc.service local-fs.target
+Wants=rauc.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rauc-usb-autoinstall.sh
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
