@@ -10,6 +10,14 @@ cache/
 *.tar.bz2
 *.raucb
 
+# Kas cloned Yocto layers
+poky/
+meta-openembedded/
+meta-raspberrypi/
+meta-rauc/
+meta-rauc-community/
+meta-lts-mixins/
+
 # Kas temporary workdir
 .kas/
 

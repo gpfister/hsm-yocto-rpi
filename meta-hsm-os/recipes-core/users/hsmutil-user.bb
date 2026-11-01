@@ -15,14 +15,7 @@ HSM_DEV_MODE ??= "0"
 do_install() {
     install -d ${D}/home/hsmutil
     chown -R 1000:100 ${D}/home/hsmutil
-
-    if [ "${HSM_DEV_MODE}" = "1" ]; then
-        install -d ${D}${sysconfdir}/sudoers.d
-        echo "hsmutil ALL=(ALL) NOPASSWD: ALL" > ${D}${sysconfdir}/sudoers.d/hsmutil
-        chmod 0440 ${D}${sysconfdir}/sudoers.d/hsmutil
-    fi
 }
 
 FILES:${PN} = "/home/hsmutil"
-FILES:${PN} += "${@bb.utils.contains('HSM_DEV_MODE', '1', '${sysconfdir}/sudoers.d/hsmutil', '', d)}"
 PREPROCESS_MAN_PAGES = ""
