@@ -23,8 +23,15 @@ echo "    Working Dir:    ${REPO_DIR}"
 mkdir -p "${REPO_DIR}/build" "${REPO_DIR}/downloads" "${REPO_DIR}/sstate-cache"
 
 # Build container run arguments
+INTERACTIVE_FLAGS=()
+if [ -t 0 ] && [ -t 1 ]; then
+    INTERACTIVE_FLAGS=(-it)
+else
+    INTERACTIVE_FLAGS=(-i)
+fi
+
 CONTAINER_ARGS=(
-    run --rm -it
+    run --rm "${INTERACTIVE_FLAGS[@]}"
     --user "$(id -u):$(id -g)"
     -v "${REPO_DIR}:/repo:rw"
     -v "${REPO_DIR}/downloads:/downloads:rw"
