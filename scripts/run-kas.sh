@@ -22,6 +22,10 @@ echo "    Working Dir:    ${REPO_DIR}"
 
 mkdir -p "${REPO_DIR}/build" "${REPO_DIR}/downloads" "${REPO_DIR}/sstate-cache"
 
+# Ensure case-sensitive ext4 Docker volume for BitBake TMPDIR (macOS APFS compatibility)
+TMP_VOLUME="${TMP_VOLUME:-rpi_yocto_hsm_tmp}"
+"${CONTAINER_ENGINE}" run --rm -v "${TMP_VOLUME}:/v" alpine chown -R "$(id -u):$(id -g)" /v
+
 # Build container run arguments
 INTERACTIVE_FLAGS=()
 if [ -t 0 ] && [ -t 1 ]; then
@@ -34,6 +38,7 @@ CONTAINER_ARGS=(
     run --rm "${INTERACTIVE_FLAGS[@]}"
     --user "$(id -u):$(id -g)"
     -v "${REPO_DIR}:/repo:rw"
+    -v "${TMP_VOLUME}:/repo/build/tmp:rw"
     -v "${REPO_DIR}/downloads:/downloads:rw"
     -v "${REPO_DIR}/sstate-cache:/sstate-cache:rw"
     -w /repo
