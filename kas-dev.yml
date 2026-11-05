@@ -12,6 +12,3 @@ local_conf_header:
     
     # Kernel Module in Dev Mode: Exposes both AT channel and debug console port
     HSM_DEV_MODE = "1"
-    
-    # Enable verbose boot logging for diagnostic purposes
-    APPEND += "debug earlyprintk"

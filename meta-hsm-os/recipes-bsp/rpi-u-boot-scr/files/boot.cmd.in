@@ -1,4 +1,5 @@
 # U-Boot bootscript with RAUC A/B Dual-Slot Support
+@@UBOOT_SILENT_BOOT@@
 
 # Extract firmware bootargs from device tree populated by VideoCore GPU firmware
 fdt addr ${fdt_addr} && fdt get value bootargs /chosen bootargs
@@ -17,7 +18,7 @@ for slot in ${BOOT_ORDER}; do
     elif test "x${slot}" = "xA"; then
         if itest ${BOOT_A_LEFT} -gt 0; then
             setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1
-            echo "RAUC: Booting Slot A (Remaining attempts: ${BOOT_A_LEFT})"
+            @@RAUC_ECHO_START@@echo "RAUC: Booting Slot A (Remaining attempts: ${BOOT_A_LEFT})"@@RAUC_ECHO_END@@
             setenv rauc_slot "A"
             setenv rootdev "/dev/mmcblk0p2"
             setenv BOOT_DEV "mmc 0:2"
@@ -25,7 +26,7 @@ for slot in ${BOOT_ORDER}; do
     elif test "x${slot}" = "xB"; then
         if itest ${BOOT_B_LEFT} -gt 0; then
             setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1
-            echo "RAUC: Booting Slot B (Remaining attempts: ${BOOT_B_LEFT})"
+            @@RAUC_ECHO_START@@echo "RAUC: Booting Slot B (Remaining attempts: ${BOOT_B_LEFT})"@@RAUC_ECHO_END@@
             setenv rauc_slot "B"
             setenv rootdev "/dev/mmcblk0p3"
             setenv BOOT_DEV "mmc 0:3"
@@ -37,7 +38,7 @@ if test -n "${rauc_slot}"; then
     setenv bootargs "${bootargs} root=${rootdev} rootwait rauc.slot=${rauc_slot}"
     saveenv
 else
-    echo "RAUC: No valid boot slots remaining. Resetting tries to 3."
+    @@RAUC_ECHO_START@@echo "RAUC: No valid boot slots remaining. Resetting tries to 3."@@RAUC_ECHO_END@@
     setenv BOOT_A_LEFT 3
     setenv BOOT_B_LEFT 3
     saveenv
@@ -46,9 +47,9 @@ fi
 
 # Load kernel from active slot with fallback to mmc 0:1
 if load ${BOOT_DEV} ${kernel_addr_r} boot/@@KERNEL_IMAGETYPE@@; then
-    echo "RAUC: Successfully loaded kernel from ${BOOT_DEV}"
+    @@RAUC_ECHO_START@@echo "RAUC: Successfully loaded kernel from ${BOOT_DEV}"@@RAUC_ECHO_END@@
 else
-    echo "RAUC: Failed to load kernel from ${BOOT_DEV}, falling back to mmc 0:1 @@KERNEL_IMAGETYPE@@"
+    @@RAUC_ECHO_START@@echo "RAUC: Failed to load kernel from ${BOOT_DEV}, falling back to mmc 0:1 @@KERNEL_IMAGETYPE@@"@@RAUC_ECHO_END@@
     load mmc 0:1 ${kernel_addr_r} @@KERNEL_IMAGETYPE@@
 fi
 

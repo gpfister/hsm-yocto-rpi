@@ -52,9 +52,34 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 | **GPIOs** | Hardware Headers | Disabled in device tree overlay | Disabled / debugging header |
 | **Root Account** | Superuser Access | Password unset, root login disabled | Password `root`, console access |
 | **`hsmutil` User** | Privilege Escalation | Standard unprivileged user, no `sudo` | Sudoer with NOPASSWD |
-| **Logging** | System & Kernel Logs | Disabled (`quiet`, no disk logging) | Stored in RAM / journald |
+| **Operator Credentials** | Password & Expiration | Default password `password`, mandatory initial setup reset, 90-day expiry (`PASS_MAX_DAYS 90`), PAM `pam_pwquality` complexity enforcement | Same |
+| **Logging** | System & Kernel Logs | Disabled (`quiet`, no disk logging, silent U-Boot) | Stored in RAM / journald (verbose U-Boot & kernel logs) |
 | **Dongle Ports** | Interface Exposure | Only AT command channel (`cdc_acm_uart1`) | Both AT command + debug log |
 | **SSH** | Remote Terminal | Completely absent from image | Completely absent from image |
+
+### 2.1 Operator Authentication & Password Security Policy
+
+- **Initial Operator Account**: `hsmutil`
+- **Default Password**: `password` (SHA-512 crypt: `$6$saltsalt$qFmFH.bQmmtXzyBY0s9v7Oicd2z4XSIecDzlB5KiA2/jctKu9YterLp8wwnSq.qc.eoxqOmSuNp2xS0ktL3nh/`)
+- **Password Expiration**: 90-day maximum lifetime enforced via `PASS_MAX_DAYS 90` in `/etc/login.defs` and `/etc/shadow`.
+- **Password Complexity Rules** (enforced by both `pam_pwquality.so` and `first-login-wizard.sh`):
+  1. Minimum length of 10 characters (`minlen = 10`)
+  2. At least 1 numeric digit (`dcredit = -1`)
+  3. At least 1 uppercase letter (`ucredit = -1`)
+  4. At least 1 special character (`ocredit = -1`)
+  5. No 2 consecutive identical characters (`maxrepeat = 1`, e.g. `aa`, `11`, `!!`)
+  6. No 3 sequential monotonic characters (`maxsequence = 2`, e.g. `abc`, `123`, `cba`, `321`)
+
+### 2.2 Boot Visibility & U-Boot Hardening
+
+- **Development Build (`dev`, `HSM_DEV_MODE = "1"`)**:
+  - Simultaneous dual-console kernel boot logging on HDMI and UART:
+    `console=serial0,115200 console=tty1 loglevel=7 debug earlyprintk`
+  - Interactive U-Boot console with RAUC boot diagnostics and autoboot countdown prompt.
+- **Production Air-Gapped Build (`prod`, `HSM_DEV_MODE = "0"`)**:
+  - Silent kernel boot on HDMI suppressing serial UART output:
+    `quiet loglevel=0 console=tty1 fsck.mode=skip`
+  - Hardened non-interactive silent U-Boot (`CONFIG_BOOTDELAY=-2`, `CONFIG_SILENT_CONSOLE=y`, `CONFIG_SYS_DEVICE_NULLDEV=y`, `CONFIG_SILENT_U_BOOT_ONLY=y`, `silent=1`), suppressing all RAUC diagnostic echo messages.
 
 ---
 

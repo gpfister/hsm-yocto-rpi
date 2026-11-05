@@ -54,8 +54,8 @@ local_conf_header:
 
     # Distribution and Init Manager
     INIT_MANAGER = "systemd"
-    DISTRO_FEATURES:append = " systemd rauc"
-    DISTRO_FEATURES_BACKFILL_CONSIDERED += "sysvinit"
+    DISTRO_FEATURES:append = " systemd rauc pam"
+    DISTRO_FEATURES_OPTED_OUT += "sysvinit"
     VIRTUAL-RUNTIME_init_manager = "systemd"
     VIRTUAL-RUNTIME_initscripts = "systemd-compat-units"
 
@@ -75,7 +75,7 @@ local_conf_header:
 
     # Air-Gapped Machine Features: Remove WiFi and Bluetooth from hardware packages
     MACHINE_FEATURES:remove = "bluetooth wifi"
-    MACHINE_FEATURES_BACKFILL_CONSIDERED += "bluetooth wifi"
+    MACHINE_FEATURES_OPTED_OUT += "bluetooth wifi"
 
     # RAUC Keys and Certificates
     RAUC_KEYRING_FILE = "${TOPDIR}/../keys/rauc-ca.cert.pem"

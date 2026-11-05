@@ -26,6 +26,7 @@ IMAGE_INSTALL:append = " \
     util-linux \
     e2fsprogs \
     dosfstools \
+    libpwquality \
 "
 
 # Set hostname to airgap-hsm
