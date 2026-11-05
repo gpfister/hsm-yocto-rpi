@@ -4,6 +4,7 @@ tmp/
 sstate-cache/
 downloads/
 cache/
+*.img
 *.wic
 *.wic.bz2
 *.wic.bmap

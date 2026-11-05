@@ -5,8 +5,8 @@
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 <image.wic | image.wic.bz2> <target_block_device>"
-    echo "Example (raw .wic):       $0 build/deploy/images/raspberrypi0-2w-64/hsm-image-prod-raspberrypi0-2w-64.rootfs.wic /dev/rdisk4"
+    echo "Usage: $0 <image.img | image.wic.bz2> <target_block_device>"
+    echo "Example (raw .img):       $0 build/deploy/images/raspberrypi0-2w-64/hsm-image-prod-raspberrypi0-2w-64.rootfs.img /dev/rdisk4"
     echo "Example (compressed):     $0 build/deploy/images/raspberrypi0-2w-64/hsm-image-prod-raspberrypi0-2w-64.rootfs.wic.bz2 /dev/rdisk4"
     exit 1
 fi

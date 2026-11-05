@@ -54,7 +54,9 @@ local_conf_header:
     VIRTUAL-RUNTIME_initscripts = "systemd-compat-units"
 
     # Image Packaging and Bootloader
-    IMAGE_FSTYPES = "tar.bz2 wic wic.bz2 wic.bmap"
+    IMAGE_FSTYPES = "tar.bz2 img wic.bz2 wic.bmap"
+    IMAGE_TYPEDEP:img = "wic"
+    IMAGE_CMD:img = "mv ${IMGDEPLOYDIR}/${IMAGE_NAME}.wic ${IMGDEPLOYDIR}/${IMAGE_NAME}.img && rm -f ${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
     WKS_FILE = "sdimage-dual-raspberrypi.wks.in"
     DEPLOY_DIR = "${TOPDIR}/deploy"
     RPI_USE_U_BOOT = "1"

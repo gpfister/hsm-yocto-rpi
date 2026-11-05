@@ -133,12 +133,12 @@ make shell
 
 ## 5. Flashing to SD Card
 
-Use the provided flashing script to flash the generated `.wic` or `.wic.bz2` image:
+Use the provided flashing script to flash the generated `.img` or `.wic.bz2` image:
 
 ```bash
 # Warning: Destructive operation! Verify block device carefully.
-# Flash uncompressed .wic image directly:
-./scripts/flash-sd.sh build/deploy/images/raspberrypi0-2w-64/hsm-image-prod-raspberrypi0-2w-64.rootfs.wic /dev/rdisk4
+# Flash uncompressed .img image directly:
+./scripts/flash-sd.sh build/deploy/images/raspberrypi0-2w-64/hsm-image-prod-raspberrypi0-2w-64.rootfs.img /dev/rdisk4
 
 # Or stream compressed .wic.bz2 image on the fly:
 ./scripts/flash-sd.sh build/deploy/images/raspberrypi0-2w-64/hsm-image-prod-raspberrypi0-2w-64.rootfs.wic.bz2 /dev/rdisk4
