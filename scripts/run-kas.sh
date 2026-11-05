@@ -22,6 +22,24 @@ echo "    Working Dir:    ${REPO_DIR}"
 
 mkdir -p "${REPO_DIR}/build" "${REPO_DIR}/downloads" "${REPO_DIR}/sstate-cache"
 
+# Cache sanity guard: purge corrupted Git bare clones in downloads/git2
+# Interrupted clones or network fetches in BitBake can leave bare clones with
+# HEAD containing 'ref: refs/heads/.invalid', causing subsequent fetches to fail
+# with 'fatal: failed to resolve HEAD as a valid ref'.
+if [ -d "${REPO_DIR}/downloads/git2" ]; then
+    while IFS= read -r -d '' head_file; do
+        if grep -q "refs/heads/\.invalid" "${head_file}" 2>/dev/null; then
+            corrupt_repo="$(dirname "${head_file}")"
+            echo "==> [WARN] Detected corrupted Git bare clone with invalid HEAD: ${corrupt_repo}"
+            echo "    Purging ${corrupt_repo} to allow clean refetch..."
+            rm -rf "${corrupt_repo}"
+            if [ -f "${corrupt_repo}.done" ]; then
+                rm -f "${corrupt_repo}.done"
+            fi
+        fi
+    done < <(find "${REPO_DIR}/downloads/git2" -name HEAD -type f -print0 2>/dev/null)
+fi
+
 # Ensure case-sensitive ext4 Docker volume for BitBake TMPDIR (macOS APFS compatibility)
 TMP_VOLUME="${TMP_VOLUME:-rpi_yocto_hsm_tmp}"
 "${CONTAINER_ENGINE}" run --rm -v "${TMP_VOLUME}:/v" alpine chown -R "$(id -u):$(id -g)" /v
