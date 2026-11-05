@@ -1,6 +1,6 @@
-# `rpi-z2w-yocto-hsm` — Air-Gapped Embedded Linux OS for nRF52840 HSM
+# Air-Gapped Embedded Linux OS for Hardware Security Modules (HSM)
 
-This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build system and custom layer (`meta-hsm-os`) for building an ultra-hardened, air-gapped, 64-bit embedded Linux operating system tailored for sensitive cryptographic operations with the nRF52840 USB Dongle (`PCA10059`) and Raspberry Pi hardware.
+This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build system and custom layer (`meta-hsm-os`) for building an ultra-hardened, air-gapped, 64-bit embedded Linux operating system. It serves as a dedicated offgrid, air-gapped appliance designed to perform sensitive cryptographic operations (such as Root CA operations, key ceremonies, and code signing) with connected HSM USB keys on Raspberry Pi hardware.
 
 ---
 
@@ -54,7 +54,7 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 | **`hsmutil` User** | Privilege Escalation | Standard unprivileged user, no `sudo` | Sudoer with NOPASSWD |
 | **Operator Credentials** | Password & Expiration | Default password `password`, mandatory initial setup reset, 90-day expiry (`PASS_MAX_DAYS 90`), PAM `pam_pwquality` complexity enforcement | Same |
 | **Logging** | System & Kernel Logs | Disabled (`quiet`, no disk logging, silent U-Boot) | Stored in RAM / journald (verbose U-Boot & kernel logs) |
-| **Dongle Ports** | Interface Exposure | Only AT command channel (`cdc_acm_uart1`) | Both AT command + debug log |
+| **HSM Device Ports** | Interface Exposure | Only AT command channel (`cdc_acm_uart1`) | Both AT command + debug log |
 | **SSH** | Remote Terminal | Completely absent from image | Completely absent from image |
 
 ### 2.1 Operator Authentication & Password Security Policy
