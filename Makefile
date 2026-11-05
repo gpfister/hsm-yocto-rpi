@@ -1,6 +1,6 @@
 # ==============================================================================
 # rpi-z2w-yocto-hsm Sub-Repository Makefile
-# Yocto Project (Scarthgap) Air-Gapped HSM Operating System
+# Yocto Project 6.1 (Blacksail) Air-Gapped HSM Operating System
 # ==============================================================================
 
 SHELL := /bin/bash
@@ -15,7 +15,7 @@ BUILD_DIR ?= build
 
 help:
 	@echo "=================================================================="
-	@echo "     rpi-z2w-yocto-hsm: Air-Gapped Embedded Linux OS (Yocto 5.0)  "
+	@echo "     rpi-z2w-yocto-hsm: Air-Gapped Embedded Linux OS (Yocto 6.1) "
 	@echo "=================================================================="
 	@echo "Build Targets:"
 	@echo "  make build-dev     Build development OS image (hsm-image-dev)"

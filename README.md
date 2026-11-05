@@ -1,6 +1,6 @@
 # `rpi-z2w-yocto-hsm` — Air-Gapped Embedded Linux OS for nRF52840 HSM
 
-This repository contains the Yocto Project 5.0 LTS (`scarthgap`) build system and custom layer (`meta-hsm-os`) for building an ultra-hardened, air-gapped, 64-bit embedded Linux operating system tailored for sensitive cryptographic operations with the nRF52840 USB Dongle (`PCA10059`) and Raspberry Pi hardware.
+This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build system and custom layer (`meta-hsm-os`) for building an ultra-hardened, air-gapped, 64-bit embedded Linux operating system tailored for sensitive cryptographic operations with the nRF52840 USB Dongle (`PCA10059`) and Raspberry Pi hardware.
 
 ---
 
@@ -19,7 +19,7 @@ This repository contains the Yocto Project 5.0 LTS (`scarthgap`) build system an
 +------------------------------------+------------------------------------+
                                      |
 +------------------------------------v------------------------------------+
-|  Linux Kernel 6.6 LTS (Hardened Configuration)                         |
+|  Linux Kernel 6.12+ (Hardened Configuration)                            |
 |  - WiFi, Bluetooth, Ethernet disabled at hardware/DTB & kernel level    |
 |  - nftables 100% total-drop packet filter (zero in/out/routed traffic)  |
 |  - Out-of-tree Driver: nrf52840-hsm-kmod                               |
@@ -63,7 +63,7 @@ This repository contains the Yocto Project 5.0 LTS (`scarthgap`) build system an
 ```text
 rpi-z2w-yocto-hsm/
 ├── Makefile                      # Build orchestration targets
-├── kas-project.yml               # Base Kas configuration (Scarthgap layers)
+├── kas-project.yml               # Base Kas configuration (Blacksail layers)
 ├── kas-dev.yml                   # Dev image overlay (sudo, debug ports)
 ├── kas-prod.yml                  # Hardened production image overlay
 ├── LICENSE                       # MIT License
@@ -159,3 +159,12 @@ Use the provided flashing script to flash the generated `.img` or `.wic.bz2` ima
    - `rauc-usb-autoinstall.service` automatically verifies the cryptographic signature against embedded `rauc-ca.cert.pem` and streams the image into the inactive partition slot.
 4. **Reboot**:
    - U-Boot activates the new partition on next reboot.
+
+## Migration Note: Yocto 5.0 (Scarthgap) → 6.1 (Blacksail)
+
+- `poky` was replaced by `openembedded-core`, `bitbake` (2.20) and `meta-yocto` in `kas-project.yml`.
+- `meta-lts-mixins` and `meta-rauc-community` were dropped; the Raspberry Pi RAUC A/B integration (WIC layout, U-Boot patch/boot script, kernel `rauc.cfg`, `/data` fstab, udev ignore list) now lives inside `meta-hsm-os`.
+- `meta-raspberrypi` and `meta-rauc` track `master` (no `blacksail` branch yet) with `LAYERSERIES_COMPAT` overrides in `kas-project.yml`.
+- Recipes use `${UNPACKDIR}` instead of `${WORKDIR}`; `debug-tweaks` was replaced by `allow-root-login post-install-logging` in the dev image.
+- `nrf52840_hsm.c` guards `.llseek = noop_llseek` for kernels older than 6.12.
+- After upgrading, run `make yocto-clean` and remove the stale `poky/`, `meta-lts-mixins/` and `meta-rauc-community/` clones.
