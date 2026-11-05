@@ -101,30 +101,46 @@ rpi-z2w-yocto-hsm/
 │   └── README.md
 ├── meta-hsm-os/                  # Custom Yocto Layer
 │   ├── conf/
-│   │   └── layer.conf
+│   │   └── layer.conf            # Layer configuration (blacksail compatibility)
+│   ├── classes/
+│   │   └── rauc-integration.bbclass # Raspberry Pi RAUC A/B integration class
 │   ├── recipes-bsp/
-│   │   ├── bootfiles/            # config.txt overlays (disable wifi/bt)
-│   │   └── rpi-u-boot-scr/       # U-Boot dual-slot boot script
+│   │   ├── bootfiles/            # rpi-cmdline.bbappend, rpi-config_%.bbappend
+│   │   ├── rpi-u-boot-scr/       # U-Boot dual-slot boot script (boot.cmd.in)
+│   │   └── u-boot/               # u-boot_%.bbappend (silent-boot.cfg, squashfs.cfg)
 │   ├── recipes-connectivity/
 │   │   └── nftables/             # Strict total-drop firewall rules
 │   ├── recipes-core/
+│   │   ├── base-files/           # base-files_%.bbappend (fstab /data mounting)
 │   │   ├── images/               # hsm-image-base, hsm-image-dev, hsm-image-prod
 │   │   ├── init-wizard/          # First-login wizard & date prompt scripts
-│   │   └── users/                # hsmutil user configuration
+│   │   ├── systemd-journald-airgap/ # Silent journald configuration
+│   │   ├── udev/                 # raspberrypi-rauc.rules (RAUC slot symlinks)
+│   │   ├── users/                # hsmutil user configuration
+│   │   └── volatile-storage/     # Ephemeral tmpfs & overlayfs runtime mounts
+│   ├── recipes-extended/
+│   │   ├── libpwquality/         # PAM pwquality configuration & complexity rules
+│   │   ├── pam/                  # libpam_%.bbappend (pam configuration)
+│   │   ├── shadow/               # shadow / shadow-sysroot (PASS_MAX_DAYS 90)
+│   │   └── sudo/                 # sudoers privilege configuration for dev
 │   ├── recipes-kernel/
-│   │   ├── linux/                # Kernel defconfig hardening fragment
-│   │   └── nrf52840-hsm-kmod/    # Dedicated out-of-tree kernel driver
+│   │   ├── linux/                # Kernel defconfig hardening fragment (hardened.cfg, rauc.cfg)
+│   │   └── nrf52840-hsm-kmod/    # Dedicated out-of-tree kernel driver (Linux 6.12+ llseek compat)
 │   ├── recipes-rauc/
 │   │   └── bundles/              # RAUC update bundle recipe (.raucb)
-│   └── recipes-support/
-│       ├── hsmutil/              # Bitbake recipe packaging hsmutil binary
-│       ├── rauc/                 # RAUC system.conf and USB installer service
-│       └── usb-mount/            # Automount udev rules for storage
+│   ├── recipes-support/
+│   │   ├── hsmutil/              # Bitbake recipe packaging hsmutil binary
+│   │   ├── rauc/                 # RAUC system.conf and USB installer service
+│   │   └── usb-mount/            # Automount udev rules for storage
+│   └── wic/
+│       └── sdimage-dual-raspberrypi.wks.in # Dual-slot A/B WIC partition template
 └── scripts/
     ├── run-kas.sh                # Containerized Kas launcher
     ├── create-rauc-bundle.sh     # Offline signed bundle builder
     ├── flash-sd.sh               # SD card raw flasher
-    └── generate-rauc-keys.sh     # Key generation script
+    ├── generate-rauc-keys.sh     # Key generation script
+    ├── test-password-validator.sh # Password complexity validator test suite (14 test cases)
+    └── verify-security-configs.sh # Security configuration assertions (19 checks)
 ```
 
 ---
@@ -185,7 +201,41 @@ Use the provided flashing script to flash the generated `.img` or `.wic.bz2` ima
 4. **Reboot**:
    - U-Boot activates the new partition on next reboot.
 
-## Migration Note: Yocto 5.0 (Scarthgap) → 6.1 (Blacksail)
+---
+
+## 7. Automated Security & Configuration Verification
+
+The repository includes automated test suites to verify password complexity enforcement and security configurations prior to image builds:
+
+```bash
+# 1. Run the interactive password validator test suite (14 test cases)
+./scripts/test-password-validator.sh
+
+# 2. Run the security configuration verifier (19 automated assertions)
+./scripts/verify-security-configs.sh
+```
+
+---
+
+## 8. Architecture Decision Records (ADRs) & Knowledge Vault
+
+Key architectural decisions governing this repository are formalized in the central Obsidian vault [`nrf52840-hsm-obsidian`](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian):
+
+- [ADR-0005: Custom BitBake img Image Type via WIC Rename](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0005%20-%20Custom%20BitBake%20img%20Image%20Type%20via%20WIC%20Rename.md)
+- [ADR-0007: Decompose Poky into openembedded-core, meta-yocto and bitbake](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0007%20-%20Decompose%20Poky%20into%20openembedded-core%20meta-yocto%20and%20bitbake.md)
+- [ADR-0008: Internalize RPi RAUC Integration into meta-hsm-os](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0008%20-%20Internalize%20RPi%20RAUC%20Integration%20into%20meta-hsm-os.md)
+- [ADR-0009: Kernel Driver llseek Version Guard and UNPACKDIR Migration](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0009%20-%20Kernel%20Driver%20llseek%20Version%20Guard%20and%20UNPACKDIR%20Migration.md)
+- [ADR-0010: Kernel Boot Console Multiplexing and Command Line Specialization](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0010%20-%20Kernel%20Boot%20Console%20Multiplexing%20and%20Command%20Line%20Specialization.md)
+- [ADR-0011: Silent Non-Interactive U-Boot Bootloader Hardening](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0011%20-%20Silent%20Non-Interactive%20U-Boot%20Bootloader%20Hardening.md)
+- [ADR-0012: PAM pwquality Password Complexity and Expiration Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0012%20-%20PAM%20pwquality%20Password%20Complexity%20and%20Expiration%20Policy.md)
+- [Air-Gapped RPi HSM OS Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/07%20-%20Air-Gapped%20RPi%20HSM%20OS%20Architecture.md)
+- [Feature: Yocto Boot Visibility & Password Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/features/yocto-boot-visibility-and-password-policy.md)
+- [Technical Specification: Yocto Dev-Prod Boot Visibility, U-Boot Hardening, and Password Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Specification/Yocto%20Dev-Prod%20Boot%20Visibility,%20U-Boot%20Hardening,%20and%20Password%20Policy.md)
+- [Implementation Plan: Yocto Dev-Prod Boot Visibility, U-Boot Hardening, and Password Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Plan/Yocto%20Dev-Prod%20Boot%20Visibility,%20U-Boot%20Hardening,%20and%20Password%20Policy%20Implementation%20Plan.md)
+
+---
+
+## 9. Migration Note: Yocto 5.0 (Scarthgap) → 6.1 (Blacksail)
 
 - `poky` was replaced by `openembedded-core`, `bitbake` (2.20) and `meta-yocto` in `kas-project.yml`.
 - `meta-lts-mixins` and `meta-rauc-community` were dropped; the Raspberry Pi RAUC A/B integration (WIC layout, U-Boot patch/boot script, kernel `rauc.cfg`, `/data` fstab, udev ignore list) now lives inside `meta-hsm-os`.
