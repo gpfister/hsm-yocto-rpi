@@ -6,46 +6,52 @@ distro: poky
 target: hsm-image-base
 
 repos:
-  poky:
-    url: https://git.yoctoproject.org/poky
-    branch: scarthgap
+  openembedded-core:
+    url: https://git.openembedded.org/openembedded-core
+    branch: blacksail
     layers:
       meta:
+
+  bitbake:
+    url: https://git.openembedded.org/bitbake
+    branch: "2.20"
+    layers:
+      .: disabled
+
+  meta-yocto:
+    url: https://git.yoctoproject.org/meta-yocto
+    branch: blacksail
+    layers:
       meta-poky:
       meta-yocto-bsp:
 
   meta-openembedded:
-    url: https://github.com/openembedded/meta-openembedded.git
-    branch: scarthgap
+    url: https://git.openembedded.org/meta-openembedded
+    branch: blacksail
     layers:
       meta-oe:
       meta-python:
       meta-networking:
       meta-filesystems:
 
+  # No blacksail branch upstream yet: track master (see LAYERSERIES_COMPAT overrides below)
   meta-raspberrypi:
     url: https://github.com/agherzan/meta-raspberrypi.git
-    branch: scarthgap
-
-  meta-lts-mixins:
-    url: https://git.yoctoproject.org/meta-lts-mixins
-    branch: scarthgap/u-boot
+    branch: master
 
   meta-rauc:
     url: https://github.com/rauc/meta-rauc.git
-    branch: scarthgap
-
-  meta-rauc-community:
-    url: https://github.com/rauc/meta-rauc-community.git
-    branch: scarthgap
-    layers:
-      meta-rauc-raspberrypi:
+    branch: master
 
   meta-hsm-os:
     path: meta-hsm-os
 
 local_conf_header:
   base_settings: |
+    # Yocto 6.1 (blacksail) compatibility for upstream master branches that do not yet declare it
+    LAYERSERIES_COMPAT_raspberrypi:append = " blacksail"
+    LAYERSERIES_COMPAT_rauc:append = " blacksail"
+
     # Distribution and Init Manager
     INIT_MANAGER = "systemd"
     DISTRO_FEATURES:append = " systemd rauc"
