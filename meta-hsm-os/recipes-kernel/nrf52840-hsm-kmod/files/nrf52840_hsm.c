@@ -20,6 +20,7 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/poll.h>
+#include <linux/version.h>
 
 #define DRIVER_NAME "nrf52840_hsm"
 #define HSM_MAX_DEVICES 16
@@ -163,7 +164,10 @@ static const struct file_operations hsm_fops = {
     .release = hsm_release,
     .read    = hsm_read,
     .write   = hsm_write,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
     .llseek  = noop_llseek,
+#endif
+    /* Linux 6.12+: no_llseek was removed; a NULL .llseek makes the node non-seekable */
 };
 
 static int hsm_probe(struct usb_interface *interface, const struct usb_device_id *id)

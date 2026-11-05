@@ -12,7 +12,7 @@ SRC_URI = " \
     file://blacklist-cdc-acm.conf \
 "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 HSM_DEV_MODE ??= "0"
 
@@ -21,10 +21,10 @@ module_conf_nrf52840_hsm = "options nrf52840_hsm hsm_dev_mode=${HSM_DEV_MODE}"
 
 do_install:append() {
     install -d ${D}${sysconfdir}/udev/rules.d
-    install -m 0644 ${WORKDIR}/99-nrf52840-hsm.rules ${D}${sysconfdir}/udev/rules.d/99-nrf52840-hsm.rules
+    install -m 0644 ${UNPACKDIR}/99-nrf52840-hsm.rules ${D}${sysconfdir}/udev/rules.d/99-nrf52840-hsm.rules
 
     install -d ${D}${sysconfdir}/modprobe.d
-    install -m 0644 ${WORKDIR}/blacklist-cdc-acm.conf ${D}${sysconfdir}/modprobe.d/blacklist-cdc-acm.conf
+    install -m 0644 ${UNPACKDIR}/blacklist-cdc-acm.conf ${D}${sysconfdir}/modprobe.d/blacklist-cdc-acm.conf
 }
 
 FILES:${PN} += " \
