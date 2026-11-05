@@ -17,10 +17,10 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
 do_install() {
     install -d ${D}/usr/local/bin
-    install -m 0755 ${WORKDIR}/hsm-setup-volatile.sh ${D}/usr/local/bin/hsm-setup-volatile.sh
+    install -m 0755 ${UNPACKDIR}/hsm-setup-volatile.sh ${D}/usr/local/bin/hsm-setup-volatile.sh
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/hsm-volatile-storage.service ${D}${systemd_system_unitdir}/hsm-volatile-storage.service
+    install -m 0644 ${UNPACKDIR}/hsm-volatile-storage.service ${D}${systemd_system_unitdir}/hsm-volatile-storage.service
 }
 
 FILES:${PN} += " \

@@ -17,10 +17,10 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
 do_install() {
     install -d ${D}${sysconfdir}
-    install -m 0600 ${WORKDIR}/nftables.conf ${D}${sysconfdir}/nftables.conf
+    install -m 0600 ${UNPACKDIR}/nftables.conf ${D}${sysconfdir}/nftables.conf
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/nftables-load.service ${D}${systemd_system_unitdir}/nftables-load.service
+    install -m 0644 ${UNPACKDIR}/nftables-load.service ${D}${systemd_system_unitdir}/nftables-load.service
 }
 
 FILES:${PN} += " \

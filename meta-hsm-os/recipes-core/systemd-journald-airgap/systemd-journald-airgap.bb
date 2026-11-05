@@ -13,9 +13,9 @@ SRC_URI = " \
 do_install() {
     install -d ${D}${sysconfdir}/systemd/journald.conf.d
     if [ "${HSM_DEV_MODE}" = "1" ]; then
-        install -m 0644 ${WORKDIR}/journald-dev.conf ${D}${sysconfdir}/systemd/journald.conf.d/airgap-logging.conf
+        install -m 0644 ${UNPACKDIR}/journald-dev.conf ${D}${sysconfdir}/systemd/journald.conf.d/airgap-logging.conf
     else
-        install -m 0644 ${WORKDIR}/journald-prod.conf ${D}${sysconfdir}/systemd/journald.conf.d/airgap-logging.conf
+        install -m 0644 ${UNPACKDIR}/journald-prod.conf ${D}${sysconfdir}/systemd/journald.conf.d/airgap-logging.conf
     fi
 }
 

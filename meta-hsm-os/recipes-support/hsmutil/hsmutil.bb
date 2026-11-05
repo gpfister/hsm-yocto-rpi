@@ -7,7 +7,7 @@ SRC_URI = " \
     file://hsmutil-arm64 \
 "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 INSANE_SKIP:${PN} += "already-stripped ldflags file-rdeps"
 INHIBIT_PACKAGE_STRIP = "1"
@@ -15,7 +15,7 @@ INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 
 do_install() {
     install -d ${D}/usr/local/bin
-    install -m 0755 ${WORKDIR}/hsmutil-arm64 ${D}/usr/local/bin/hsmutil
+    install -m 0755 ${UNPACKDIR}/hsmutil-arm64 ${D}/usr/local/bin/hsmutil
 }
 
 FILES:${PN} += "/usr/local/bin/hsmutil"

@@ -9,10 +9,10 @@ RDEPENDS:${PN} += "bash"
 
 do_install:append() {
     install -d ${D}/usr/local/bin
-    install -m 0755 ${WORKDIR}/rauc-usb-autoinstall.sh ${D}/usr/local/bin/rauc-usb-autoinstall.sh
+    install -m 0755 ${UNPACKDIR}/rauc-usb-autoinstall.sh ${D}/usr/local/bin/rauc-usb-autoinstall.sh
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/rauc-usb-autoinstall.service ${D}${systemd_system_unitdir}/rauc-usb-autoinstall.service
+    install -m 0644 ${UNPACKDIR}/rauc-usb-autoinstall.service ${D}${systemd_system_unitdir}/rauc-usb-autoinstall.service
 }
 
 SYSTEMD_SERVICE:${PN} += "rauc-usb-autoinstall.service"
