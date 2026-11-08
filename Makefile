@@ -11,7 +11,7 @@ CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null
 MACHINE ?= raspberrypi0-2w-64
 BUILD_DIR ?= build
 
-.PHONY: help build-dev build-prod bundle clean shell keys check-docker
+.PHONY: help build-dev build-prod bundle clean distclean shell keys check-docker
 
 help:
 	@echo "=================================================================="
@@ -23,6 +23,7 @@ help:
 	@echo "  make bundle        Create signed RAUC A/B update bundle (.raucb)"
 	@echo "  make shell         Launch interactive Kas shell inside build container"
 	@echo "  make clean         Remove build directory (preserves downloads/sstate)"
+	@echo "  make distclean     Purge build, caches, downloaded layers, and container volume"
 	@echo "  make keys          Generate self-signed RAUC update keys if missing"
 	@echo ""
 	@echo "Options:"
@@ -57,3 +58,12 @@ clean:
 	@echo "==> Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)/tmp
 	@echo "Clean completed."
+
+distclean: clean
+	@echo "==> Purging Yocto workspace, caches, and Kas repositories..."
+	@rm -rf $(BUILD_DIR)
+	@rm -rf downloads sstate-cache
+	@rm -rf bitbake openembedded-core meta-yocto meta-openembedded meta-raspberrypi meta-rauc
+	@echo "==> Removing container volume rpi_yocto_hsm_tmp if present..."
+	@$(CONTAINER_ENGINE) volume rm -f rpi_yocto_hsm_tmp 2>/dev/null || true
+	@echo "Distclean completed."

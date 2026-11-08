@@ -27,6 +27,7 @@ IMAGE_INSTALL:append = " \
     e2fsprogs \
     dosfstools \
     libpwquality \
+    i2c-tools \
 "
 
 # Set hostname to airgap-hsm
