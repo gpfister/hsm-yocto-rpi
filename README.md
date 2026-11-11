@@ -27,14 +27,17 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 |    -> Registers /dev/tty.hsm<ble_address><number>                       |
 |    -> Production: Strictly binds AT channel (cdc_acm_uart1)             |
 |    -> Dev: Binds both AT channel and debug console                      |
+|  - Hardware RTC: Maxim DS3231SN on primary I2C-1 (Pins 1, 3, 5, 9)     |
+|    -> In-kernel driver: rtc-ds1307 (CONFIG_RTC_DRV_DS1307=y)            |
+|    -> Early boot clock synchronization via CONFIG_RTC_HCTOSYS (<50ms)   |
 +------------------------------------+------------------------------------+
                                      |
 +------------------------------------v------------------------------------+
 |  Read-Only User Space                                                   |
 |  - System User: hsmutil (dialout, tty, storage)                         |
 |  - First-Login Setup Wizard: Forced password reset, loadkeys, locale    |
-|  - Every-Login Clock Prompt: Operator UTC timestamp synchronization     |
-|  - Application: /usr/local/bin/hsmutil (Cobra CLI / BubbleTea TUI)      |
+|  - RTC-Aware Login Clock Setup: Status check, Enter-to-keep, SUID sync  |
+|  - Application: /usr/local/bin/gphsm (Cobra CLI / Bubble Tea TUI)       |
 |  - USB Storage Automount: rw access under /media/usb-* for key exports  |
 |  - RAUC Service: Dual-slot x509-signed USB auto-installer (.raucb)     |
 +-------------------------------------------------------------------------+
@@ -81,12 +84,35 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
     `quiet loglevel=0 console=tty1 fsck.mode=skip`
   - Hardened non-interactive silent U-Boot (`CONFIG_BOOTDELAY=-2`, `CONFIG_SILENT_CONSOLE=y`, `CONFIG_SYS_DEVICE_NULLDEV=y`, `CONFIG_SILENT_U_BOOT_ONLY=y`, `silent=1`), suppressing all RAUC diagnostic echo messages.
 
+### 2.3 Hardware Real-Time Clock (HW-084 / DS3231) & Time Synchronization
+
+Because the appliance operates in strict physical network isolation, Network Time Protocol (NTP) cannot function. To maintain reliable UTC time for X.509 certificates, RAUC bundle verification, audit logs, and PKCS#11 keys, the system integrates the **HW-084 (Maxim DS3231SN)** high-precision TCXO Real-Time Clock module over primary hardware I2C-1.
+
+#### Hardware Pinout (Raspberry Pi 40-Pin Header via Waveshare HAT Passthrough)
+
+| HW-084 Pin | Physical Pin | BCM GPIO / Function | Signal Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **VCC** | **Pin 1** | `3V3 Power` | 3.3V DC Power | Regulated 3.3V supply from PMIC |
+| **GND** | **Pin 9** | `Ground` | 0V Reference | Common system ground |
+| **SDA** | **Pin 3** | `GPIO 2 / I2C1_SDA` | I2C Data | Serial data with 1.8kΩ hardware pull-up |
+| **SCL** | **Pin 5** | `GPIO 3 / I2C1_SCL` | I2C Clock | Serial clock with 1.8kΩ hardware pull-up |
+
+#### Kernel & Firmware Configuration
+- **Kernel Subsystem (`hardened.cfg`)**: `CONFIG_RTC_CLASS=y`, `CONFIG_RTC_DRV_DS1307=y`, `CONFIG_RTC_HCTOSYS=y`, `CONFIG_RTC_HCTOSYS_DEVICE="rtc0"`, `CONFIG_I2C=y`, `CONFIG_I2C_CHARDEV=y`, `CONFIG_I2C_BCM2835=y`.
+- **Firmware Overlays (`rpi-config_%.bbappend`)**: `ENABLE_I2C = "1"` (`dtparam=i2c_arm=on`) and `dtoverlay=i2c-rtc,ds3231`.
+- **Hardware Diagnostics**: `i2c-tools` is included in image recipes; verify via `i2cdetect -y 1` (`UU` at address `0x68`).
+
+#### RTC-Aware Login Clock Setup (`clock-setup.sh`)
+- On console login, `clock-setup.sh` inspects `/dev/rtc0` via `hwclock -u -r`.
+- If healthy: Displays `[OK] Hardware RTC detected (/dev/rtc0): active and synchronized` and prompts `(or Enter to keep)`. Pressing `[Enter]` retains the hardware time without typing.
+- If uninitialized or drifted: Typing a timestamp `YYYY-MM-DD HH:MM:SS` invokes setuid root helper `/usr/local/bin/hsm-set-date`, atomically updating the kernel clock (`settimeofday`) and the hardware DS3231 registers (`ioctl(RTC_SET_TIME)`).
+
 ---
 
 ## 3. Directory Layout
 
 ```text
-rpi-z2w-yocto-hsm/
+hsm-yocto-offgrid-rpi/
 ├── Makefile                      # Build orchestration targets
 ├── kas-project.yml               # Base Kas configuration (Blacksail layers)
 ├── kas-dev.yml                   # Dev image overlay (sudo, debug ports)
@@ -164,6 +190,17 @@ make build-prod
 make build-prod MACHINE=raspberrypi4-64
 ```
 
+### Workspace Cleanliness & Teardown
+
+```bash
+# Clean compilation output directory (preserves downloads, sstate-cache, and cloned layers)
+make clean
+
+# Nuclear distclean: completely purges build/, downloads/, sstate-cache/, checked-out
+# Kas layer repositories, and forcefully removes container volume rpi_yocto_hsm_tmp
+make distclean
+```
+
 ### Interactive Kas Shell
 
 ```bash
@@ -219,19 +256,25 @@ The repository includes automated test suites to verify password complexity enfo
 
 ## 8. Architecture Decision Records (ADRs) & Knowledge Vault
 
-Key architectural decisions governing this repository are formalized in the central Obsidian vault [`nrf52840-hsm-obsidian`](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian):
+Key architectural decisions governing this repository are formalized in the central Obsidian vault [`hsm-obsidian`](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian):
 
-- [ADR-0005: Custom BitBake img Image Type via WIC Rename](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0005%20-%20Custom%20BitBake%20img%20Image%20Type%20via%20WIC%20Rename.md)
-- [ADR-0007: Decompose Poky into openembedded-core, meta-yocto and bitbake](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0007%20-%20Decompose%20Poky%20into%20openembedded-core%20meta-yocto%20and%20bitbake.md)
-- [ADR-0008: Internalize RPi RAUC Integration into meta-hsm-os](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0008%20-%20Internalize%20RPi%20RAUC%20Integration%20into%20meta-hsm-os.md)
-- [ADR-0009: Kernel Driver llseek Version Guard and UNPACKDIR Migration](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0009%20-%20Kernel%20Driver%20llseek%20Version%20Guard%20and%20UNPACKDIR%20Migration.md)
-- [ADR-0010: Kernel Boot Console Multiplexing and Command Line Specialization](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0010%20-%20Kernel%20Boot%20Console%20Multiplexing%20and%20Command%20Line%20Specialization.md)
-- [ADR-0011: Silent Non-Interactive U-Boot Bootloader Hardening](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0011%20-%20Silent%20Non-Interactive%20U-Boot%20Bootloader%20Hardening.md)
-- [ADR-0012: PAM pwquality Password Complexity and Expiration Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/Decisions/ADR-0012%20-%20PAM%20pwquality%20Password%20Complexity%20and%20Expiration%20Policy.md)
-- [Air-Gapped RPi HSM OS Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Architecture/07%20-%20Air-Gapped%20RPi%20HSM%20OS%20Architecture.md)
-- [Feature: Yocto Boot Visibility & Password Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/features/yocto-boot-visibility-and-password-policy.md)
-- [Technical Specification: Yocto Dev-Prod Boot Visibility, U-Boot Hardening, and Password Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Specification/Yocto%20Dev-Prod%20Boot%20Visibility,%20U-Boot%20Hardening,%20and%20Password%20Policy.md)
-- [Implementation Plan: Yocto Dev-Prod Boot Visibility, U-Boot Hardening, and Password Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/nrf52840-hsm-obsidian/Plan/Yocto%20Dev-Prod%20Boot%20Visibility,%20U-Boot%20Hardening,%20and%20Password%20Policy%20Implementation%20Plan.md)
+- [ADR-0005: Custom BitBake img Image Type via WIC Rename](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0005%20-%20Custom%20BitBake%20img%20Image%20Type%20via%20WIC%20Rename.md)
+- [ADR-0007: Decompose Poky into openembedded-core, meta-yocto and bitbake](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0007%20-%20Decompose%20Poky%20into%20openembedded-core%20meta-yocto%20and%20bitbake.md)
+- [ADR-0008: Internalize RPi RAUC Integration into meta-hsm-os](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0008%20-%20Internalize%20RPi%20RAUC%20Integration%20into%20meta-hsm-os.md)
+- [ADR-0009: Kernel Driver llseek Version Guard and UNPACKDIR Migration](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0009%20-%20Kernel%20Driver%20llseek%20Version%20Guard%20and%20UNPACKDIR%20Migration.md)
+- [ADR-0010: Kernel Boot Console Multiplexing and Command Line Specialization](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0010%20-%20Kernel%20Boot%20Console%20Multiplexing%20and%20Command%20Line%20Specialization.md)
+- [ADR-0011: Silent Non-Interactive U-Boot Bootloader Hardening](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0011%20-%20Silent%20Non-Interactive%20U-Boot%20Bootloader%20Hardening.md)
+- [ADR-0012: PAM pwquality Password Complexity and Expiration Policy](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0012%20-%20PAM%20pwquality%20Password%20Complexity%20and%20Expiration%20Policy.md)
+- [ADR-0021: Hardware I2C-1 Bus Mapping for HW-084 DS3231 RTC Module](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0021%20-%20Hardware%20I2C-1%20Bus%20Mapping%20for%20HW-084%20DS3231%20RTC%20Module.md)
+- [ADR-0022: RTC-Aware Informational Login Prompt with Transactional Hardware Clock Sync](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0022%20-%20RTC-Aware%20Informational%20Login%20Prompt%20with%20Transactional%20Hardware%20Clock%20Sync.md)
+- [ADR-0023: Container Volume and Workspace Cache Purging during Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0023%20-%20Container%20Volume%20and%20Workspace%20Cache%20Purging%20during%20Distclean.md)
+- [Air-Gapped RPi HSM OS Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/07%20-%20Air-Gapped%20RPi%20HSM%20OS%20Architecture.md)
+- [Air-Gapped Time Synchronization and Hardware RTC Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/08%20-%20Air-Gapped%20Time%20Synchronization%20and%20Hardware%20RTC%20Architecture.md)
+- [Build Lifecycle and Workspace Clean Routines](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Build%20Lifecycle%20and%20Workspace%20Clean%20Routines.md)
+- [HW-084 DS3231 Real-Time Clock Module Specification](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Hardware/HW-084%20DS3231%20Real-Time%20Clock%20Module.md)
+- [Feature: Yocto 6.1 (Blacksail), HW-084 (DS3231) RTC & Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-blacksail-rtc-and-distclean.md)
+- [Technical Specification: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean.md)
+- [Implementation Plan: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean%20Implementation%20Plan.md)
 
 ---
 
@@ -240,6 +283,7 @@ Key architectural decisions governing this repository are formalized in the cent
 - `poky` was replaced by `openembedded-core`, `bitbake` (2.20) and `meta-yocto` in `kas-project.yml`.
 - `meta-lts-mixins` and `meta-rauc-community` were dropped; the Raspberry Pi RAUC A/B integration (WIC layout, U-Boot patch/boot script, kernel `rauc.cfg`, `/data` fstab, udev ignore list) now lives inside `meta-hsm-os`.
 - `meta-raspberrypi` and `meta-rauc` track `master` (no `blacksail` branch yet) with `LAYERSERIES_COMPAT` overrides in `kas-project.yml`.
+- Deprecated `*_OPTED_OUT` variables have been eliminated in favor of strict `:remove` overrides (`DISTRO_FEATURES:remove = "sysvinit"`).
 - Recipes use `${UNPACKDIR}` instead of `${WORKDIR}`; `debug-tweaks` was replaced by `allow-root-login post-install-logging` in the dev image.
 - `nrf52840_hsm.c` guards `.llseek = noop_llseek` for kernels older than 6.12.
-- After upgrading, run `make yocto-clean` and remove the stale `poky/`, `meta-lts-mixins/` and `meta-rauc-community/` clones.
+- After upgrading or modifying layer manifests, execute `make distclean` to atomically purge all stale layer checkouts, caches, and container volumes (`rpi_yocto_hsm_tmp`).
