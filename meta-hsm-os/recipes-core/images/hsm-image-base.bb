@@ -33,9 +33,8 @@ IMAGE_INSTALL:append = " \
 # Set hostname to airgap-hsm
 hostname:pn-base-files = "airgap-hsm"
 
-# Produce uncompressed .img artifact by renaming the generated .wic output
+# Produce uncompressed .img artifact by hardlinking the generated .wic output
 IMAGE_TYPEDEP:img = "wic"
 IMAGE_CMD:img () {
-    mv "${IMGDEPLOYDIR}/${IMAGE_NAME}.wic" "${IMGDEPLOYDIR}/${IMAGE_NAME}.img"
-    rm -f "${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
+    ln -f "${IMGDEPLOYDIR}/${IMAGE_NAME}.wic" "${IMGDEPLOYDIR}/${IMAGE_NAME}.img"
 }

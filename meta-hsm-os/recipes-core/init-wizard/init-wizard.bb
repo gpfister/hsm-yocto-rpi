@@ -13,18 +13,21 @@ SRC_URI = " \
 RDEPENDS:${PN} += "bash kbd util-linux tzdata"
 
 do_compile() {
-    ${CC} ${CFLAGS} ${LDFLAGS} ${UNPACKDIR}/hsm-set-date.c -o ${UNPACKDIR}/hsm-set-date
+    ${CC} ${CFLAGS} ${LDFLAGS} ${UNPACKDIR}/hsm-set-date.c -o ${B}/hsm-set-date
 }
 
 do_install() {
     install -d ${D}/usr/local/bin
     install -m 0755 ${UNPACKDIR}/first-login-wizard.sh ${D}/usr/local/bin/first-login-wizard.sh
     install -m 0755 ${UNPACKDIR}/clock-setup.sh ${D}/usr/local/bin/clock-setup.sh
-    install -m 4755 ${UNPACKDIR}/hsm-set-date ${D}/usr/local/bin/hsm-set-date
+    install -m 4755 ${B}/hsm-set-date ${D}/usr/local/bin/hsm-set-date
 
     install -d ${D}${sysconfdir}/profile.d
     install -m 0644 ${UNPACKDIR}/hsm-profile.sh ${D}${sysconfdir}/profile.d/hsm-login.sh
 }
+
+INSANE_SKIP:${PN}-dbg += "buildpaths"
+INSANE_SKIP:${PN} += "buildpaths"
 
 FILES:${PN} += " \
     /usr/local/bin/first-login-wizard.sh \
