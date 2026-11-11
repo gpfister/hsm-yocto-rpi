@@ -20,8 +20,11 @@ do_install() {
 pkg_postinst:${PN}() {
     if [ -n "$D" ]; then
         if [ -f "$D/etc/shadow" ]; then
-            sed -i 's/^\(hsmutil:[^:]*:[^:]*:[^:]*:\)[^:]*\(.*\)/\190\2/' "$D/etc/shadow"
+            # Force password expiration on first login (sp_lstchg = 0)
+            sed -i 's/^hsmutil:\([^:]*\):[^:]*:/hsmutil:\1:0:/' "$D/etc/shadow"
         fi
+    else
+        chage -d 0 hsmutil 2>/dev/null || true
     fi
 }
 

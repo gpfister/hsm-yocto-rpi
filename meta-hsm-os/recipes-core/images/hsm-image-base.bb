@@ -1,5 +1,5 @@
 SUMMARY = "nRF52840 HSM Base Embedded Linux Image"
-DESCRIPTION = "Air-gapped, read-only console system containing hsmutil and dedicated USB hardware support."
+DESCRIPTION = "Air-gapped, read-only console system containing gphsm and dedicated USB hardware support."
 LICENSE = "MIT"
 
 inherit core-image
@@ -16,7 +16,8 @@ IMAGE_INSTALL:append = " \
     systemd-journald-airgap \
     hsmutil-user \
     init-wizard \
-    hsmutil \
+    gphsm \
+    clean-console \
     usb-mount \
     rauc \
     libubootenv-bin \
@@ -30,8 +31,8 @@ IMAGE_INSTALL:append = " \
     i2c-tools \
 "
 
-# Set hostname to airgap-hsm
-hostname:pn-base-files = "airgap-hsm"
+# Set hostname to piKMS
+hostname:pn-base-files = "piKMS"
 
 # Produce uncompressed .img artifact by hardlinking the generated .wic output
 IMAGE_TYPEDEP:img = "wic"
