@@ -8,20 +8,22 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 
 ```text
 +-------------------------------------------------------------------------+
-|                  Air-Gapped Hardware Appliance                          |
+|                  Air-Gapped Hardware Appliance (piKMS)                  |
 |  Raspberry Pi Zero 2 W / 3 / 4 / 5 + Waveshare USB HAT (B) + HDMI       |
 +------------------------------------+------------------------------------+
                                      |
 +------------------------------------v------------------------------------+
 |  U-Boot Bootloader (Dual-Slot A/B Partition Manager + Boot Counter)    |
-|  - Slot A: /dev/mmcblk0p2 (ext4 read-only)                              |
-|  - Slot B: /dev/mmcblk0p3 (ext4 read-only)                              |
+|  - no-net.cfg: CONFIG_NET & network commands completely stripped       |
+|  - Slot A: /dev/mmcblk0p2 (ext4 read-only)                             |
+|  - Slot B: /dev/mmcblk0p3 (ext4 read-only)                             |
 +------------------------------------+------------------------------------+
                                      |
 +------------------------------------v------------------------------------+
 |  Linux Kernel 6.12+ (Hardened Configuration)                            |
 |  - WiFi, Bluetooth, Ethernet disabled at hardware/DTB & kernel level    |
 |  - nftables 100% total-drop packet filter (zero in/out/routed traffic)  |
+|  - Clean Console: logo.nologo, # CONFIG_LOGO is not set                 |
 |  - Out-of-tree Driver: nrf52840-hsm-kmod                               |
 |    -> Matches USB 0x1209:0x0001                                         |
 |    -> Registers /dev/tty.hsm<ble_address><number>                       |
@@ -33,11 +35,13 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 +------------------------------------+------------------------------------+
                                      |
 +------------------------------------v------------------------------------+
-|  Read-Only User Space                                                   |
+|  Read-Only User Space (piKMS)                                           |
+|  - System Identity: Standardized hostname piKMS                         |
 |  - System User: hsmutil (dialout, tty, storage)                         |
-|  - First-Login Setup Wizard: Forced password reset, loadkeys, locale    |
+|  - Native PAM First-Login Setup: sp_lstchg=0, loadkeys, UTC timezone     |
+|  - Clean Console: 10-clean-console.conf & 20-quiet-console.conf         |
 |  - RTC-Aware Login Clock Setup: Status check, Enter-to-keep, SUID sync  |
-|  - Application: /usr/local/bin/gphsm (Cobra CLI / Bubble Tea TUI)       |
+|  - Application: /usr/local/bin/gphsm (Symlink: /usr/local/bin/hsmutil)  |
 |  - USB Storage Automount: rw access under /media/usb-* for key exports  |
 |  - RAUC Service: Dual-slot x509-signed USB auto-installer (.raucb)     |
 +-------------------------------------------------------------------------+
@@ -49,23 +53,29 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 
 | Dimension | Specification | Production (`prod`) | Development (`dev`) |
 | :--- | :--- | :--- | :--- |
+| **System Identity** | Hostname | Standardized `piKMS` (`hostname:pn-base-files = "piKMS"`) | Same (`piKMS`) |
 | **Filesystem** | Root Filesystem | Read-only ext4 / squashfs | Read-only ext4 with overlayfs |
 | **Networking** | Physical Interfaces | WiFi, BLE, Ethernet disabled in DTB / kernel configs | Same (strict air-gap) |
+| **U-Boot Network** | Bootloader Subsystem | Completely disabled (`CONFIG_NET=n`, `no-net.cfg`) | Completely disabled (`CONFIG_NET=n`, `no-net.cfg`) |
 | **Firewall** | Packet Filter | `nftables` default drop all inbound, outbound, forward | Same (strict air-gap) |
 | **GPIOs** | Hardware Headers | Disabled in device tree overlay | Disabled / debugging header |
 | **Root Account** | Superuser Access | Password unset, root login disabled | Password `root`, console access |
 | **`hsmutil` User** | Privilege Escalation | Standard unprivileged user, no `sudo` | Sudoer with NOPASSWD |
-| **Operator Credentials** | Password & Expiration | Default password `password`, mandatory initial setup reset, 90-day expiry (`PASS_MAX_DAYS 90`), PAM `pam_pwquality` complexity enforcement | Same |
-| **Logging** | System & Kernel Logs | Disabled (`quiet`, no disk logging, silent U-Boot) | Stored in RAM / journald (verbose U-Boot & kernel logs) |
+| **Operator Credentials** | Password & Expiration | Default password `password`, native PAM forced first-login reset (`sp_lstchg=0`), 90-day expiry (`PASS_MAX_DAYS 90`), PAM `pam_pwquality` complexity | Same |
+| **Boot Logos & Splash** | Framebuffer Graphic | Disabled (`# CONFIG_LOGO is not set`, `logo.nologo vt.global_cursor_default=1`, `disable_splash=1`) | Disabled (`# CONFIG_LOGO is not set`, `logo.nologo vt.global_cursor_default=1`) |
+| **Console Hardening** | System & Kernel Logs | Silent monitor (`quiet loglevel=0 console=tty1 fsck.mode=skip`, `kernel.printk = 1 1 1 1`, systemd `ShowStatus=no`, `LogLevel=notice`, silent U-Boot) | Dual broadcast (`console=serial0,115200 console=tty1 loglevel=7 debug earlyprintk`, interactive U-Boot) |
 | **HSM Device Ports** | Interface Exposure | Only AT command channel (`cdc_acm_uart1`) | Both AT command + debug log |
+| **Application Tooling** | Management CLI | `/usr/local/bin/gphsm` (with `/usr/local/bin/hsmutil` symlink) | Same |
 | **SSH** | Remote Terminal | Completely absent from image | Completely absent from image |
 
 ### 2.1 Operator Authentication & Password Security Policy
 
 - **Initial Operator Account**: `hsmutil`
 - **Default Password**: `password` (SHA-512 crypt: `$6$saltsalt$qFmFH.bQmmtXzyBY0s9v7Oicd2z4XSIecDzlB5KiA2/jctKu9YterLp8wwnSq.qc.eoxqOmSuNp2xS0ktL3nh/`)
+- **Native PAM First-Login Rotation**: Shadow expiration flag is set to `sp_lstchg = 0` via `shadow_%.bbappend`. On first login, Linux PAM (`pam_unix.so` / `pam_pwquality.so`) natively intercepts the session, prompts for immediate password change, and strictly enforces complexity criteria before opening the user shell.
+- **Streamlined First-Login Setup Wizard** (`first-login-wizard.sh`): Deduplicated to focus exclusively on keyboard layout (`loadkeys`) and system locale/UTC timezone configuration without redundant password loops.
 - **Password Expiration**: 90-day maximum lifetime enforced via `PASS_MAX_DAYS 90` in `/etc/login.defs` and `/etc/shadow`.
-- **Password Complexity Rules** (enforced by both `pam_pwquality.so` and `first-login-wizard.sh`):
+- **Password Complexity Rules** (enforced natively by `pam_pwquality.so`):
   1. Minimum length of 10 characters (`minlen = 10`)
   2. At least 1 numeric digit (`dcredit = -1`)
   3. At least 1 uppercase letter (`ucredit = -1`)
@@ -73,15 +83,25 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
   5. No 2 consecutive identical characters (`maxrepeat = 1`, e.g. `aa`, `11`, `!!`)
   6. No 3 sequential monotonic characters (`maxsequence = 2`, e.g. `abc`, `123`, `cba`, `321`)
 
-### 2.2 Boot Visibility & U-Boot Hardening
+### 2.2 Boot Visibility, Console Noise Suppression & U-Boot Network Hardening
 
+- **Complete U-Boot Network Subsystem Deactivation (`no-net.cfg`)**:
+  - In `recipes-bsp/u-boot/files/no-net.cfg`, `CONFIG_NET` and all network commands (`CONFIG_CMD_DHCP`, `CONFIG_CMD_PING`, `CONFIG_CMD_TFTPBOOT`, `CONFIG_CMD_NFS`, `CONFIG_CMD_NET`, `CONFIG_NETDEVICES`) are completely compiled out of U-Boot.
+  - Eliminates network attack surface during bootloader initialization, enforcing the zero-network physical air-gap continuously from power-on through OS runtime.
+- **Framebuffer Boot Logo Suppression**:
+  - Unsets `# CONFIG_LOGO is not set` in kernel defconfig fragment `hardened.cfg`.
+  - Injects `logo.nologo vt.global_cursor_default=1` into kernel cmdline across both dev and prod images.
+  - Suppresses VideoCore splash via `disable_splash=1` and `DISABLE_RPI_BOOT_LOGO = "1"`.
+- **Clean Console Hardening (`clean-console.bb`)**:
+  - Installs `/etc/systemd/system.conf.d/10-clean-console.conf` (`LogLevel=notice`, `LogTarget=journal`, `ShowStatus=no`, `LogColor=no`) suppressing systemd service startup notifications and watchdog chatter on physical monitor `tty1`.
+  - Installs `/etc/sysctl.d/20-quiet-console.conf` enforcing `kernel.printk = 1 1 1 1`, silencing all non-emergency kernel messages.
 - **Development Build (`dev`, `HSM_DEV_MODE = "1"`)**:
-  - Simultaneous dual-console kernel boot logging on HDMI and UART:
-    `console=serial0,115200 console=tty1 loglevel=7 debug earlyprintk`
-  - Interactive U-Boot console with RAUC boot diagnostics and autoboot countdown prompt.
+  - Dual-console kernel boot logging on HDMI and UART:
+    `console=serial0,115200 console=tty1 loglevel=7 debug earlyprintk logo.nologo vt.global_cursor_default=1`
+  - Interactive U-Boot console (`CONFIG_BOOTDELAY=2`) with RAUC boot diagnostics and autoboot countdown prompt.
 - **Production Air-Gapped Build (`prod`, `HSM_DEV_MODE = "0"`)**:
   - Silent kernel boot on HDMI suppressing serial UART output:
-    `quiet loglevel=0 console=tty1 fsck.mode=skip`
+    `quiet loglevel=0 console=tty1 fsck.mode=skip logo.nologo vt.global_cursor_default=1`
   - Hardened non-interactive silent U-Boot (`CONFIG_BOOTDELAY=-2`, `CONFIG_SILENT_CONSOLE=y`, `CONFIG_SYS_DEVICE_NULLDEV=y`, `CONFIG_SILENT_U_BOOT_ONLY=y`, `silent=1`), suppressing all RAUC diagnostic echo messages.
 
 ### 2.3 Hardware Real-Time Clock (HW-084 / DS3231) & Time Synchronization
@@ -107,6 +127,16 @@ Because the appliance operates in strict physical network isolation, Network Tim
 - If healthy: Displays `[OK] Hardware RTC detected (/dev/rtc0): active and synchronized` and prompts `(or Enter to keep)`. Pressing `[Enter]` retains the hardware time without typing.
 - If uninitialized or drifted: Typing a timestamp `YYYY-MM-DD HH:MM:SS` invokes setuid root helper `/usr/local/bin/hsm-set-date`, atomically updating the kernel clock (`settimeofday`) and the hardware DS3231 registers (`ioctl(RTC_SET_TIME)`).
 
+### 2.4 Appliance Identity (piKMS) & Tooling Alignment (gphsm)
+
+- **System Identity & Hostname**:
+  - The appliance hostname is standardized across all image configurations via `hostname:pn-base-files = "piKMS"` in `kas-project.yml`.
+  - Sets `/etc/hostname` to `piKMS`, ensuring consistent operator terminal banners (`hsmutil@piKMS:~#` or `hsmutil@piKMS:~$`) and network-isolated `/etc/hosts` resolution.
+- **Canonical CLI Tooling (`gphsm`)**:
+  - Packaged via `recipes-support/gphsm/gphsm.bb` into `/usr/local/bin/gphsm` as the primary host CLI/TUI management utility.
+  - Automatically creates a symbolic link `/usr/local/bin/hsmutil` pointing to `gphsm` for complete backward compatibility.
+  - The operator account remains `hsmutil:users` with home directory `/home/hsmutil`, preserving user permissions and automated script paths.
+
 ---
 
 ## 3. Directory Layout
@@ -114,7 +144,7 @@ Because the appliance operates in strict physical network isolation, Network Tim
 ```text
 hsm-yocto-offgrid-rpi/
 ├── Makefile                      # Build orchestration targets
-├── kas-project.yml               # Base Kas configuration (Blacksail layers)
+├── kas-project.yml               # Base Kas configuration (Blacksail layers, hostname: piKMS)
 ├── kas-dev.yml                   # Dev image overlay (sudo, debug ports)
 ├── kas-prod.yml                  # Hardened production image overlay
 ├── LICENSE                       # MIT License
@@ -133,13 +163,14 @@ hsm-yocto-offgrid-rpi/
 │   ├── recipes-bsp/
 │   │   ├── bootfiles/            # rpi-cmdline.bbappend, rpi-config_%.bbappend
 │   │   ├── rpi-u-boot-scr/       # U-Boot dual-slot boot script (boot.cmd.in)
-│   │   └── u-boot/               # u-boot_%.bbappend (silent-boot.cfg, squashfs.cfg)
+│   │   └── u-boot/               # u-boot_%.bbappend (no-net.cfg, silent-boot.cfg, squashfs.cfg)
 │   ├── recipes-connectivity/
 │   │   └── nftables/             # Strict total-drop firewall rules
 │   ├── recipes-core/
-│   │   ├── base-files/           # base-files_%.bbappend (fstab /data mounting)
+│   │   ├── base-files/           # base-files_%.bbappend (hostname: piKMS, /data fstab)
+│   │   ├── clean-console/        # 10-clean-console.conf & 20-quiet-console.conf (systemd & printk silence)
 │   │   ├── images/               # hsm-image-base, hsm-image-dev, hsm-image-prod
-│   │   ├── init-wizard/          # First-login wizard & date prompt scripts
+│   │   ├── init-wizard/          # First-login wizard (loadkeys, timezone) & date prompt
 │   │   ├── systemd-journald-airgap/ # Silent journald configuration
 │   │   ├── udev/                 # raspberrypi-rauc.rules (RAUC slot symlinks)
 │   │   ├── users/                # hsmutil user configuration
@@ -147,7 +178,7 @@ hsm-yocto-offgrid-rpi/
 │   ├── recipes-extended/
 │   │   ├── libpwquality/         # PAM pwquality configuration & complexity rules
 │   │   ├── pam/                  # libpam_%.bbappend (pam configuration)
-│   │   ├── shadow/               # shadow / shadow-sysroot (PASS_MAX_DAYS 90)
+│   │   ├── shadow/               # shadow / shadow-sysroot (sp_lstchg=0, PASS_MAX_DAYS 90)
 │   │   └── sudo/                 # sudoers privilege configuration for dev
 │   ├── recipes-kernel/
 │   │   ├── linux/                # Kernel defconfig hardening fragment (hardened.cfg, rauc.cfg)
@@ -155,7 +186,7 @@ hsm-yocto-offgrid-rpi/
 │   ├── recipes-rauc/
 │   │   └── bundles/              # RAUC update bundle recipe (.raucb)
 │   ├── recipes-support/
-│   │   ├── hsmutil/              # Bitbake recipe packaging hsmutil binary
+│   │   ├── gphsm/                # Bitbake recipe packaging gphsm binary & hsmutil symlink
 │   │   ├── rauc/                 # RAUC system.conf and USB installer service
 │   │   └── usb-mount/            # Automount udev rules for storage
 │   └── wic/
@@ -268,12 +299,19 @@ Key architectural decisions governing this repository are formalized in the cent
 - [ADR-0021: Hardware I2C-1 Bus Mapping for HW-084 DS3231 RTC Module](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0021%20-%20Hardware%20I2C-1%20Bus%20Mapping%20for%20HW-084%20DS3231%20RTC%20Module.md)
 - [ADR-0022: RTC-Aware Informational Login Prompt with Transactional Hardware Clock Sync](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0022%20-%20RTC-Aware%20Informational%20Login%20Prompt%20with%20Transactional%20Hardware%20Clock%20Sync.md)
 - [ADR-0023: Container Volume and Workspace Cache Purging during Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0023%20-%20Container%20Volume%20and%20Workspace%20Cache%20Purging%20during%20Distclean.md)
+- [ADR-0024: Native Shadow PAM Password Expiration vs First-Login Wizard Deduplication](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0024%20-%20Native%20Shadow%20PAM%20Password%20Expiration%20vs%20First-Login%20Wizard%20Deduplication.md)
+- [ADR-0025: Complete U-Boot Network Subsystem Deactivation in Air-Gapped Appliance](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0025%20-%20Complete%20U-Boot%20Network%20Subsystem%20Deactivation%20in%20Air-Gapped%20Appliance.md)
+- [ADR-0026: HDMI Console Noise Suppression and Log Level Hardening](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0026%20-%20HDMI%20Console%20Noise%20Suppression%20and%20Log%20Level%20Hardening.md)
+- [ADR-0027: Appliance Identity Standardization to piKMS and CLI Packaging Alignment to gphsm](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0027%20-%20Appliance%20Identity%20Standardization%20to%20piKMS%20and%20CLI%20Packaging%20Alignment%20to%20gphsm.md)
 - [Air-Gapped RPi HSM OS Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/07%20-%20Air-Gapped%20RPi%20HSM%20OS%20Architecture.md)
 - [Air-Gapped Time Synchronization and Hardware RTC Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/08%20-%20Air-Gapped%20Time%20Synchronization%20and%20Hardware%20RTC%20Architecture.md)
 - [Build Lifecycle and Workspace Clean Routines](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Build%20Lifecycle%20and%20Workspace%20Clean%20Routines.md)
 - [HW-084 DS3231 Real-Time Clock Module Specification](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Hardware/HW-084%20DS3231%20Real-Time%20Clock%20Module.md)
+- [Feature: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-hardening-clean-console-pikms.md)
 - [Feature: Yocto 6.1 (Blacksail), HW-084 (DS3231) RTC & Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-blacksail-rtc-and-distclean.md)
+- [Technical Specification: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/HSM%20Yocto%20OS%20Hardening,%20Clean%20Console,%20U-Boot%20Network%20Deactivation,%20and%20gphsm%20CLI%20Alignment.md)
 - [Technical Specification: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean.md)
+- [Implementation Plan: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/HSM%20Yocto%20OS%20Hardening,%20Clean%20Console,%20U-Boot%20Network%20Deactivation,%20and%20gphsm%20CLI%20Alignment%20Implementation%20Plan.md)
 - [Implementation Plan: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean%20Implementation%20Plan.md)
 
 ---
