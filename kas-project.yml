@@ -9,18 +9,21 @@ repos:
   openembedded-core:
     url: https://git.openembedded.org/openembedded-core
     branch: blacksail
+    path: build/repos/openembedded-core
     layers:
       meta:
 
   bitbake:
     url: https://git.openembedded.org/bitbake
     branch: "2.20"
+    path: build/repos/bitbake
     layers:
       .: disabled
 
   meta-yocto:
     url: https://git.yoctoproject.org/meta-yocto
     branch: blacksail
+    path: build/repos/meta-yocto
     layers:
       meta-poky:
       meta-yocto-bsp:
@@ -28,6 +31,7 @@ repos:
   meta-openembedded:
     url: https://git.openembedded.org/meta-openembedded
     branch: blacksail
+    path: build/repos/meta-openembedded
     layers:
       meta-oe:
       meta-python:
@@ -38,10 +42,12 @@ repos:
   meta-raspberrypi:
     url: https://github.com/agherzan/meta-raspberrypi.git
     branch: master
+    path: build/repos/meta-raspberrypi
 
   meta-rauc:
     url: https://github.com/rauc/meta-rauc.git
     branch: master
+    path: build/repos/meta-rauc
 
   meta-hsm-os:
     path: meta-hsm-os

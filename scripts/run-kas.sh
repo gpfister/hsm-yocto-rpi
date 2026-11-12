@@ -20,13 +20,13 @@ echo "==> Running Kas via ${CONTAINER_ENGINE} (${KAS_IMAGE})..."
 echo "    Target Machine: ${KAS_MACHINE}"
 echo "    Working Dir:    ${REPO_DIR}"
 
-mkdir -p "${REPO_DIR}/build" "${REPO_DIR}/downloads" "${REPO_DIR}/sstate-cache"
+mkdir -p "${REPO_DIR}/build" "${REPO_DIR}/build/downloads" "${REPO_DIR}/build/sstate-cache"
 
-# Cache sanity guard: purge corrupted Git bare clones in downloads/git2
+# Cache sanity guard: purge corrupted Git bare clones in build/downloads/git2
 # Interrupted clones or network fetches in BitBake can leave bare clones with
 # HEAD containing 'ref: refs/heads/.invalid', causing subsequent fetches to fail
 # with 'fatal: failed to resolve HEAD as a valid ref'.
-if [ -d "${REPO_DIR}/downloads/git2" ]; then
+if [ -d "${REPO_DIR}/build/downloads/git2" ]; then
     while IFS= read -r -d '' head_file; do
         if grep -q "refs/heads/\.invalid" "${head_file}" 2>/dev/null; then
             corrupt_repo="$(dirname "${head_file}")"
@@ -37,7 +37,7 @@ if [ -d "${REPO_DIR}/downloads/git2" ]; then
                 rm -f "${corrupt_repo}.done"
             fi
         fi
-    done < <(find "${REPO_DIR}/downloads/git2" -name HEAD -type f -print0 2>/dev/null)
+    done < <(find "${REPO_DIR}/build/downloads/git2" -name HEAD -type f -print0 2>/dev/null)
 fi
 
 # Ensure case-sensitive ext4 Docker volume for BitBake TMPDIR (macOS APFS compatibility)
@@ -57,8 +57,8 @@ CONTAINER_ARGS=(
     --user "$(id -u):$(id -g)"
     -v "${REPO_DIR}:/repo:rw"
     -v "${TMP_VOLUME}:/repo/build/tmp:rw"
-    -v "${REPO_DIR}/downloads:/downloads:rw"
-    -v "${REPO_DIR}/sstate-cache:/sstate-cache:rw"
+    -v "${REPO_DIR}/build/downloads:/downloads:rw"
+    -v "${REPO_DIR}/build/sstate-cache:/sstate-cache:rw"
     -w /repo
     -e "KAS_MACHINE=${KAS_MACHINE}"
     -e "DL_DIR=/downloads"

@@ -10,8 +10,6 @@ IMAGE_INSTALL:append = " \
     packagegroup-core-boot \
     kernel-modules \
     nrf52840-hsm-kmod \
-    nftables \
-    nftables-rules \
     volatile-storage \
     systemd-journald-airgap \
     hsmutil-user \

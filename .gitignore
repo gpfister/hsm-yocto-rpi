@@ -1,8 +1,6 @@
 # Build directories and outputs
 build/
 tmp/
-sstate-cache/
-downloads/
 cache/
 *.img
 *.wic
@@ -10,14 +8,6 @@ cache/
 *.wic.bmap
 *.tar.bz2
 *.raucb
-
-# Kas cloned Yocto layers
-openembedded-core/
-bitbake/
-meta-yocto/
-meta-openembedded/
-meta-raspberrypi/
-meta-rauc/
 
 # Kas temporary workdir
 .kas/

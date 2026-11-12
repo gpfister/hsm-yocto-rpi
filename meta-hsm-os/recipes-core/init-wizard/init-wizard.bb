@@ -12,6 +12,8 @@ SRC_URI = " \
 
 RDEPENDS:${PN} += "bash kbd util-linux tzdata"
 
+HSM_DEV_MODE ??= "0"
+
 do_compile() {
     ${CC} ${CFLAGS} ${LDFLAGS} ${UNPACKDIR}/hsm-set-date.c -o ${B}/hsm-set-date
 }
@@ -24,6 +26,17 @@ do_install() {
 
     install -d ${D}${sysconfdir}/profile.d
     install -m 0644 ${UNPACKDIR}/hsm-profile.sh ${D}${sysconfdir}/profile.d/hsm-login.sh
+
+    if [ "${HSM_DEV_MODE}" = "0" ]; then
+        cat << 'EOF' > ${D}${sysconfdir}/profile.d/99-hsm-history.sh
+# Production mode: Disable bash history retention
+export HISTFILE=/dev/null
+export HISTSIZE=0
+export HISTFILESIZE=0
+set +o history 2>/dev/null || true
+EOF
+        chmod 0644 ${D}${sysconfdir}/profile.d/99-hsm-history.sh
+    fi
 }
 
 INSANE_SKIP:${PN}-dbg += "buildpaths"
@@ -33,5 +46,5 @@ FILES:${PN} += " \
     /usr/local/bin/first-login-wizard.sh \
     /usr/local/bin/clock-setup.sh \
     /usr/local/bin/hsm-set-date \
-    ${sysconfdir}/profile.d/hsm-login.sh \
+    ${sysconfdir}/profile.d/*.sh \
 "

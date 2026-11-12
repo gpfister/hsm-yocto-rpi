@@ -13,3 +13,6 @@ IMAGE_INSTALL:append = " \
     sudo \
     strace \
 "
+
+# Set development hostname to piKMS-dev
+hostname:pn-base-files = "piKMS-dev"

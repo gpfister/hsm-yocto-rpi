@@ -41,7 +41,7 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 |  - Native PAM First-Login Setup: sp_lstchg=0, loadkeys, UTC timezone     |
 |  - Clean Console: 10-clean-console.conf & 20-quiet-console.conf         |
 |  - RTC-Aware Login Clock Setup: Status check, Enter-to-keep, SUID sync  |
-|  - Application: /usr/local/bin/gphsm (Symlink: /usr/local/bin/hsmutil)  |
+|  - Application: /usr/local/bin/gphsm                                   |
 |  - USB Storage Automount: rw access under /media/usb-* for key exports  |
 |  - RAUC Service: Dual-slot x509-signed USB auto-installer (.raucb)     |
 +-------------------------------------------------------------------------+
@@ -53,11 +53,12 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 
 | Dimension | Specification | Production (`prod`) | Development (`dev`) |
 | :--- | :--- | :--- | :--- |
-| **System Identity** | Hostname | Standardized `piKMS` (`hostname:pn-base-files = "piKMS"`) | Same (`piKMS`) |
+| **System Identity** | Hostname | `piKMS` (`hostname:pn-base-files = "piKMS"`) | `piKMS-dev` (`hostname:pn-base-files = "piKMS-dev"`) |
 | **Filesystem** | Root Filesystem | Read-only ext4 / squashfs | Read-only ext4 with overlayfs |
 | **Networking** | Physical Interfaces | WiFi, BLE, Ethernet disabled in DTB / kernel configs | Same (strict air-gap) |
+| **Network Stack** | Protocol Families | Stripped at kernel level (`# CONFIG_INET is not set`, `# CONFIG_IPV6 is not set`, Netfilter stripped) | Same (`CONFIG_UNIX=y`, `CONFIG_NET=y` retained for local IPC) |
 | **U-Boot Network** | Bootloader Subsystem | Completely disabled (`CONFIG_NET=n`, `no-net.cfg`) | Completely disabled (`CONFIG_NET=n`, `no-net.cfg`) |
-| **Firewall** | Packet Filter | `nftables` default drop all inbound, outbound, forward | Same (strict air-gap) |
+| **Shell History** | Command History | Deactivated (`HISTFILE=/dev/null`, `HISTSIZE=0`, `set +o history`) | Standard interactive history retained |
 | **GPIOs** | Hardware Headers | Disabled in device tree overlay | Disabled / debugging header |
 | **Root Account** | Superuser Access | Password unset, root login disabled | Password `root`, console access |
 | **`hsmutil` User** | Privilege Escalation | Standard unprivileged user, no `sudo` | Sudoer with NOPASSWD |
@@ -65,7 +66,7 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 | **Boot Logos & Splash** | Framebuffer Graphic | Disabled (`# CONFIG_LOGO is not set`, `logo.nologo vt.global_cursor_default=1`, `disable_splash=1`) | Disabled (`# CONFIG_LOGO is not set`, `logo.nologo vt.global_cursor_default=1`) |
 | **Console Hardening** | System & Kernel Logs | Silent monitor (`quiet loglevel=0 console=tty1 fsck.mode=skip`, `kernel.printk = 1 1 1 1`, systemd `ShowStatus=no`, `LogLevel=notice`, silent U-Boot) | Dual broadcast (`console=serial0,115200 console=tty1 loglevel=7 debug earlyprintk`, interactive U-Boot) |
 | **HSM Device Ports** | Interface Exposure | Only AT command channel (`cdc_acm_uart1`) | Both AT command + debug log |
-| **Application Tooling** | Management CLI | `/usr/local/bin/gphsm` (with `/usr/local/bin/hsmutil` symlink) | Same |
+| **Application Tooling** | Management CLI | `/usr/local/bin/gphsm` (symlink eliminated) | Same |
 | **SSH** | Remote Terminal | Completely absent from image | Completely absent from image |
 
 ### 2.1 Operator Authentication & Password Security Policy
@@ -134,7 +135,7 @@ Because the appliance operates in strict physical network isolation, Network Tim
   - Sets `/etc/hostname` to `piKMS`, ensuring consistent operator terminal banners (`hsmutil@piKMS:~#` or `hsmutil@piKMS:~$`) and network-isolated `/etc/hosts` resolution.
 - **Canonical CLI Tooling (`gphsm`)**:
   - Packaged via `recipes-support/gphsm/gphsm.bb` into `/usr/local/bin/gphsm` as the primary host CLI/TUI management utility.
-  - Automatically creates a symbolic link `/usr/local/bin/hsmutil` pointing to `gphsm` for complete backward compatibility.
+  - Installs `/usr/local/bin/gphsm` with the legacy `hsmutil` symlink completely eliminated.
   - The operator account remains `hsmutil:users` with home directory `/home/hsmutil`, preserving user permissions and automated script paths.
 
 ---
@@ -149,6 +150,11 @@ hsm-yocto-offgrid-rpi/
 ├── kas-prod.yml                  # Hardened production image overlay
 ├── LICENSE                       # MIT License
 ├── README.md                     # This file
+├── build/                        # Encapsulated build output (git-ignored)
+│   ├── downloads/                # BitBake source archives
+│   ├── repos/                    # Cloned Kas layer repositories
+│   ├── sstate-cache/             # Shared state cache
+│   └── tmp/                      # Case-sensitive APFS/ext4 temporary build dir
 ├── keys/                         # RAUC update signing certificates & keys
 │   ├── rauc-ca.cert.pem          # Public CA embedded into target image
 │   ├── rauc-ca.key.pem           # CA private key (git-ignored)
@@ -164,8 +170,6 @@ hsm-yocto-offgrid-rpi/
 │   │   ├── bootfiles/            # rpi-cmdline.bbappend, rpi-config_%.bbappend
 │   │   ├── rpi-u-boot-scr/       # U-Boot dual-slot boot script (boot.cmd.in)
 │   │   └── u-boot/               # u-boot_%.bbappend (no-net.cfg, silent-boot.cfg, squashfs.cfg)
-│   ├── recipes-connectivity/
-│   │   └── nftables/             # Strict total-drop firewall rules
 │   ├── recipes-core/
 │   │   ├── base-files/           # base-files_%.bbappend (hostname: piKMS, /data fstab)
 │   │   ├── clean-console/        # 10-clean-console.conf & 20-quiet-console.conf (systemd & printk silence)
