@@ -86,6 +86,10 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 
 ### 2.2 Boot Visibility, Console Noise Suppression & U-Boot Network Hardening
 
+- **Complete Kernel Network Protocol Stripping**:
+  - All IPv4 (`# CONFIG_INET is not set`) and IPv6 (`# CONFIG_IPV6 is not set`) protocol families and Netfilter packet filtering (`# CONFIG_NETFILTER is not set`, `# CONFIG_NF_TABLES is not set`) are completely stripped from the kernel defconfig fragment `hardened.cfg`.
+  - Base socket infrastructure (`CONFIG_NET=y`) and UNIX domain sockets (`CONFIG_UNIX=y`) are preserved for local `systemd` and `udev` IPC.
+  - Any call to `socket(AF_INET, ...)` returns `EAFNOSUPPORT`. Obsolete user-space `nftables` utilities are purged from image recipes.
 - **Complete U-Boot Network Subsystem Deactivation (`no-net.cfg`)**:
   - In `recipes-bsp/u-boot/files/no-net.cfg`, `CONFIG_NET` and all network commands (`CONFIG_CMD_DHCP`, `CONFIG_CMD_PING`, `CONFIG_CMD_TFTPBOOT`, `CONFIG_CMD_NFS`, `CONFIG_CMD_NET`, `CONFIG_NETDEVICES`) are completely compiled out of U-Boot.
   - Eliminates network attack surface during bootloader initialization, enforcing the zero-network physical air-gap continuously from power-on through OS runtime.
@@ -128,14 +132,18 @@ Because the appliance operates in strict physical network isolation, Network Tim
 - If healthy: Displays `[OK] Hardware RTC detected (/dev/rtc0): active and synchronized` and prompts `(or Enter to keep)`. Pressing `[Enter]` retains the hardware time without typing.
 - If uninitialized or drifted: Typing a timestamp `YYYY-MM-DD HH:MM:SS` invokes setuid root helper `/usr/local/bin/hsm-set-date`, atomically updating the kernel clock (`settimeofday`) and the hardware DS3231 registers (`ioctl(RTC_SET_TIME)`).
 
-### 2.4 Appliance Identity (piKMS) & Tooling Alignment (gphsm)
+### 2.4 Appliance Identity, History Conditioning & Tooling Alignment (gphsm)
 
-- **System Identity & Hostname**:
-  - The appliance hostname is standardized across all image configurations via `hostname:pn-base-files = "piKMS"` in `kas-project.yml`.
-  - Sets `/etc/hostname` to `piKMS`, ensuring consistent operator terminal banners (`hsmutil@piKMS:~#` or `hsmutil@piKMS:~$`) and network-isolated `/etc/hosts` resolution.
+- **Environment-Conditioned Hostnames**:
+  - Production builds (`hsm-image-prod.bb`) configure `hostname:pn-base-files = "piKMS"` (prompt: `hsmutil@piKMS:~$`).
+  - Development builds (`hsm-image-dev.bb`) configure `hostname:pn-base-files = "piKMS-dev"` (prompt: `hsmutil@piKMS-dev:~$`).
+  - Sets `/etc/hostname` and loopback entries in `/etc/hosts` to eliminate operational environment ambiguity.
+- **Session History Deactivation**:
+  - In production mode (`HSM_DEV_MODE=0`), `/etc/profile.d/99-hsm-history.sh` enforces `HISTFILE=/dev/null`, `HISTSIZE=0`, `HISTFILESIZE=0`, and `set +o history` to eliminate forensic command, credential, or PIN leakage.
+  - Development mode (`HSM_DEV_MODE=1`) retains standard interactive bash history logging in `/home/hsmutil/.bash_history`.
 - **Canonical CLI Tooling (`gphsm`)**:
-  - Packaged via `recipes-support/gphsm/gphsm.bb` into `/usr/local/bin/gphsm` as the primary host CLI/TUI management utility.
-  - Installs `/usr/local/bin/gphsm` with the legacy `hsmutil` symlink completely eliminated.
+  - Packaged via `recipes-support/gphsm/gphsm.bb` into `/usr/local/bin/gphsm` as the primary host CLI/TUI management utility with dual local/git build workflows.
+  - The legacy `hsmutil` symlink has been permanently eliminated from `/usr/local/bin` and package metadata.
   - The operator account remains `hsmutil:users` with home directory `/home/hsmutil`, preserving user permissions and automated script paths.
 
 ---
@@ -307,14 +315,21 @@ Key architectural decisions governing this repository are formalized in the cent
 - [ADR-0025: Complete U-Boot Network Subsystem Deactivation in Air-Gapped Appliance](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0025%20-%20Complete%20U-Boot%20Network%20Subsystem%20Deactivation%20in%20Air-Gapped%20Appliance.md)
 - [ADR-0026: HDMI Console Noise Suppression and Log Level Hardening](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0026%20-%20HDMI%20Console%20Noise%20Suppression%20and%20Log%20Level%20Hardening.md)
 - [ADR-0027: Appliance Identity Standardization to piKMS and CLI Packaging Alignment to gphsm](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0027%20-%20Appliance%20Identity%20Standardization%20to%20piKMS%20and%20CLI%20Packaging%20Alignment%20to%20gphsm.md)
+- [ADR-0028: Complete Kernel Network Protocol Stripping (Elimination of PF_INET and PF_INET6)](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0028%20-%20Complete%20Kernel%20Network%20Protocol%20Stripping.md)
+- [ADR-0029: Production Session History Suppression and Environment-Conditioned Hostnames](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0029%20-%20Production%20Session%20History%20Suppression%20and%20Environment-Conditioned%20Hostnames.md)
+- [ADR-0030: Sub-Repository Workspace Cleanliness via Encapsulated Build Directory](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0030%20-%20Sub-Repository%20Workspace%20Cleanliness%20via%20Encapsulated%20Build%20Directory.md)
+- [ADR-0031: gphsm Packaging Lifecycle and Complete Deprecation of hsmutil Symlink](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0031%20-%20gphsm%20Packaging%20Lifecycle%20and%20Complete%20Deprecation%20of%20hsmutil%20Symlink.md)
 - [Air-Gapped RPi HSM OS Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/07%20-%20Air-Gapped%20RPi%20HSM%20OS%20Architecture.md)
 - [Air-Gapped Time Synchronization and Hardware RTC Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/08%20-%20Air-Gapped%20Time%20Synchronization%20and%20Hardware%20RTC%20Architecture.md)
 - [Build Lifecycle and Workspace Clean Routines](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Build%20Lifecycle%20and%20Workspace%20Clean%20Routines.md)
 - [HW-084 DS3231 Real-Time Clock Module Specification](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Hardware/HW-084%20DS3231%20Real-Time%20Clock%20Module.md)
+- [Feature: Kernel Network Stripping, Clean Subrepo Architecture, Environment Conditioning, and gphsm Workflow](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-network-strip-clean-layout.md)
 - [Feature: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-hardening-clean-console-pikms.md)
 - [Feature: Yocto 6.1 (Blacksail), HW-084 (DS3231) RTC & Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-blacksail-rtc-and-distclean.md)
+- [Technical Specification: Kernel Network Stripping, Clean Subrepo Architecture, Environment Conditioning, and gphsm Workflow](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Kernel%20Network%20Stripping,%20Clean%20Subrepo%20Architecture,%20Environment%20Conditioning,%20and%20gphsm%20Workflow.md)
 - [Technical Specification: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/HSM%20Yocto%20OS%20Hardening,%20Clean%20Console,%20U-Boot%20Network%20Deactivation,%20and%20gphsm%20CLI%20Alignment.md)
 - [Technical Specification: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean.md)
+- [Implementation Plan: Kernel Network Stripping, Clean Subrepo Architecture, Environment Conditioning, and gphsm Workflow](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Kernel%20Network%20Stripping,%20Clean%20Subrepo%20Architecture,%20Environment%20Conditioning,%20and%20gphsm%20Workflow%20Implementation%20Plan.md)
 - [Implementation Plan: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/HSM%20Yocto%20OS%20Hardening,%20Clean%20Console,%20U-Boot%20Network%20Deactivation,%20and%20gphsm%20CLI%20Alignment%20Implementation%20Plan.md)
 - [Implementation Plan: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean%20Implementation%20Plan.md)
 
