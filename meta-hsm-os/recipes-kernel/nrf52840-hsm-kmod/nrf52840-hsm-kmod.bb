@@ -17,6 +17,7 @@ S = "${UNPACKDIR}"
 HSM_DEV_MODE ??= "0"
 
 KERNEL_MODULE_AUTOLOAD += "nrf52840_hsm"
+KERNEL_MODULE_PROBECONF += "nrf52840_hsm"
 module_conf_nrf52840_hsm = "options nrf52840_hsm hsm_dev_mode=${HSM_DEV_MODE}"
 
 do_install:append() {

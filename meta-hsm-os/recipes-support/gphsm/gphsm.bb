@@ -11,7 +11,7 @@ SRC_URI = "${@oe.utils.conditional('HSM_DEV_MODE', '1', \
 
 SRCREV = "${@oe.utils.conditional('HSM_DEV_MODE', '1', '', '${AUTOREV}', d)}"
 
-S = "${@oe.utils.conditional('HSM_DEV_MODE', '1', '${UNPACKDIR}', '${WORKDIR}/git', d)}"
+S = "${@oe.utils.conditional('HSM_DEV_MODE', '1', '${UNPACKDIR}', '${UNPACKDIR}/git', d)}"
 
 INSANE_SKIP:${PN} += "already-stripped ldflags file-rdeps"
 INHIBIT_PACKAGE_STRIP = "1"

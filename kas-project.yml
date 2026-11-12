@@ -89,3 +89,6 @@ local_conf_header:
 
     # Air-Gapped Network Disablement (no package feed)
     PACKAGE_FEED_URIS = ""
+
+    # Shared hash equivalency database across builds
+    BB_HASHSERVE_DB_DIR = "${SSTATE_DIR}"
