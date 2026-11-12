@@ -1,0 +1,14 @@
+[Unit]
+Description=Monitor Authentication and Account Database Changes
+DefaultDependencies=no
+After=data.mount
+
+[Path]
+PathModified=/etc/shadow
+PathModified=/etc/passwd
+PathModified=/etc/group
+PathModified=/etc/gshadow
+Unit=hsm-persist-auth.service
+
+[Install]
+WantedBy=multi-user.target

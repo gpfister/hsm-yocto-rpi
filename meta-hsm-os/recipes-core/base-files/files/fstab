@@ -9,6 +9,6 @@ tmpfs                /var/volatile        tmpfs      defaults              0  0
 # uncomment this if your device has a SD/MMC/Transflash slot
 #/dev/mmcblk0p1       /media/card          auto       defaults,sync,noauto  0  0
 
-/dev/mmcblk0p1  /boot   vfat    defaults         0       0
-/dev/mmcblk0p5  /data   ext4    defaults         0       0
-/dev/mmcblk0p6  /home   ext4    x-systemd.growfs 0       0
+/dev/mmcblk0p1  /boot   vfat    defaults                   0       0
+LABEL=data      /data   ext4    defaults                   0       2
+LABEL=homefs    /home   ext4    defaults,x-systemd.growfs  0       2

@@ -39,6 +39,7 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 |  - System Identity: Standardized hostname piKMS                         |
 |  - System User: hsmutil (dialout, tty, storage)                         |
 |  - Native PAM First-Login Setup: sp_lstchg=0, loadkeys, UTC timezone     |
+|  - Persistent Auth State: /data/etc synchronization (shadow, passwd)     |
 |  - Clean Console: 10-clean-console.conf & 20-quiet-console.conf         |
 |  - RTC-Aware Login Clock Setup: Status check, Enter-to-keep, SUID sync  |
 |  - Application: /usr/local/bin/gphsm                                   |
@@ -63,6 +64,7 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
 | **Root Account** | Superuser Access | Password unset, root login disabled | Password `root`, console access |
 | **`hsmutil` User** | Privilege Escalation | Standard unprivileged user, no `sudo` | Sudoer with NOPASSWD |
 | **Operator Credentials** | Password & Expiration | Default password `password`, native PAM forced first-login reset (`sp_lstchg=0`), 90-day expiry (`PASS_MAX_DAYS 90`), PAM `pam_pwquality` complexity | Same |
+| **Authentication Persistence** | Credential Storage | Targeted sync to `/data/etc` via `hsm-persist-auth.path`, seeds on first boot, atomic restore on reboot | Same |
 | **Boot Logos & Splash** | Framebuffer Graphic | Disabled (`# CONFIG_LOGO is not set`, `logo.nologo vt.global_cursor_default=1`, `disable_splash=1`) | Disabled (`# CONFIG_LOGO is not set`, `logo.nologo vt.global_cursor_default=1`) |
 | **Console Hardening** | System & Kernel Logs | Silent monitor (`quiet loglevel=0 console=tty1 fsck.mode=skip`, `kernel.printk = 1 1 1 1`, systemd `ShowStatus=no`, `LogLevel=notice`, silent U-Boot) | Dual broadcast (`console=serial0,115200 console=tty1 loglevel=7 debug earlyprintk`, interactive U-Boot) |
 | **HSM Device Ports** | Interface Exposure | Only AT command channel (`cdc_acm_uart1`) | Both AT command + debug log |
@@ -83,6 +85,12 @@ This repository contains the Yocto Project 6.1 (`blacksail`, BitBake 2.20) build
   4. At least 1 special character (`ocredit = -1`)
   5. No 2 consecutive identical characters (`maxrepeat = 1`, e.g. `aa`, `11`, `!!`)
   6. No 3 sequential monotonic characters (`maxsequence = 2`, e.g. `abc`, `123`, `cba`, `321`)
+- **Targeted Authentication State Persistence (`/data/etc`)**:
+  - The root filesystem remains 100% read-only with an ephemeral RAM tmpfs overlay over `/etc`.
+  - On first boot, `hsm-setup-volatile.sh` seeds `/data/etc` (`0700 root:root`) from the rootfs template with strict permissions (`0400 root:shadow` for shadow/gshadow, `0644 root:root` for passwd/group).
+  - On subsequent boots, valid credentials from `/data/etc` are restored into the active `/etc` overlay, eliminating repetitive PAM password change prompts across reboots. Empty or corrupted files automatically fall back to the rootfs template.
+  - A real-time systemd path unit (`hsm-persist-auth.path`) and oneshot service (`hsm-persist-auth.service`) monitor `/etc/{shadow,passwd,group,gshadow}`, atomically synchronizing updates via `hsm-sync-auth.sh` (using temporary files, `.bak` backups, and POSIX atomic renames) with `sync` flush.
+  - Persistent home directory mounting (`LABEL=homefs` on `/home`) preserves operator dotfiles (`.wizard_completed`, `.keymap`) across power cycles without ephemeral tmpfs masking.
 
 ### 2.2 Boot Visibility, Console Noise Suppression & U-Boot Network Hardening
 
@@ -186,7 +194,7 @@ hsm-yocto-offgrid-rpi/
 │   │   ├── systemd-journald-airgap/ # Silent journald configuration
 │   │   ├── udev/                 # raspberrypi-rauc.rules (RAUC slot symlinks)
 │   │   ├── users/                # hsmutil user configuration
-│   │   └── volatile-storage/     # Ephemeral tmpfs & overlayfs runtime mounts
+│   │   └── volatile-storage/     # Ephemeral tmpfs & /data/etc targeted auth persistence (hsm-sync-auth)
 │   ├── recipes-extended/
 │   │   ├── libpwquality/         # PAM pwquality configuration & complexity rules
 │   │   ├── pam/                  # libpam_%.bbappend (pam configuration)

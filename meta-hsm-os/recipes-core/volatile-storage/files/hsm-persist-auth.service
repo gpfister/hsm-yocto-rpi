@@ -1,0 +1,14 @@
+[Unit]
+Description=Synchronize Authentication Database to Persistent Storage
+DefaultDependencies=no
+After=data.mount
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hsm-sync-auth.sh
+ExecStop=/usr/local/bin/hsm-sync-auth.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
