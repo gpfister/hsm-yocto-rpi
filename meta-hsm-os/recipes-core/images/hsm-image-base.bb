@@ -29,9 +29,6 @@ IMAGE_INSTALL:append = " \
     i2c-tools \
 "
 
-# Set hostname to piKMS
-hostname:pn-base-files = "piKMS"
-
 # Produce uncompressed .img artifact by hardlinking the generated .wic output
 IMAGE_TYPEDEP:img = "wic"
 IMAGE_CMD:img () {

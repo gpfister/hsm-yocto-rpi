@@ -20,7 +20,12 @@ INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 do_compile() {
     if [ "${HSM_DEV_MODE}" = "0" ] && [ -d "${S}/cmd/gphsm" ] && command -v go >/dev/null 2>&1; then
         cd "${S}"
-        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "${B}/gphsm" ./cmd/gphsm || true
+        VERSION="$(git describe --tags --always 2>/dev/null || echo dev)"
+        COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+        BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
+            -ldflags="-s -w -X github.com/gpfister/nrf52840-hsm-cli/internal/version.Version=${VERSION} -X github.com/gpfister/nrf52840-hsm-cli/internal/version.Commit=${COMMIT} -X github.com/gpfister/nrf52840-hsm-cli/internal/version.BuildDate=${BUILD_DATE}" \
+            -o "${B}/gphsm" ./cmd/gphsm || true
     fi
 }
 
