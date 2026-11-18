@@ -164,6 +164,7 @@ hsm-yocto-offgrid-rpi/
 ├── kas-project.yml               # Base Kas configuration (Blacksail layers, hostname: piKMS)
 ├── kas-dev.yml                   # Dev image overlay (sudo, debug ports)
 ├── kas-prod.yml                  # Hardened production image overlay
+├── kas-bundle.yml                # Declarative RAUC update bundle configuration (target: update-bundle)
 ├── LICENSE                       # MIT License
 ├── README.md                     # This file
 ├── build/                        # Encapsulated build output (git-ignored)
@@ -277,10 +278,20 @@ Use the provided flashing script to flash the generated `.img` or `.wic.bz2` ima
 
 ## 6. Offline RAUC A/B Firmware Updates
 
+Air-gapped firmware and rootfs updates are packaged into cryptographically signed RAUC bundles (`.raucb`) using declarative Kas configuration (`kas-bundle.yml`):
+
 1. **Build signed update bundle**:
    ```bash
+   # Build bundle for default machine (raspberrypi0-2w-64)
    make bundle
+
+   # Or target a specific Raspberry Pi hardware model
+   make bundle MACHINE=raspberrypi4-64
    ```
+   - **Declarative Kas Workflow**: Executes `scripts/create-rauc-bundle.sh`, which loads `kas-bundle.yml` (inheriting production hardening flags and keys from `kas-prod.yml`) and instructs BitBake to build the `update-bundle` recipe directly (`bitbake update-bundle`).
+   - **Shared State Preservation**: Reuses cached `hsm-image-prod` artifacts from `build/sstate-cache/`, avoiding full OS recompilation.
+   - **Strict Verification & Output**: Enforces `set -euo pipefail`, verifies generated `*.raucb` files in `build/deploy/images/${MACHINE}/`, copies the active bundle to `build/deploy/bundles/update-bundle.raucb`, and reports artifact size and timestamp.
+
 2. **Deploy to USB Flash Drive**:
    - Copy the generated `.raucb` bundle file to the root of a FAT32 or ext4 formatted USB drive.
 3. **Plug into Air-Gapped Appliance**:
@@ -329,18 +340,22 @@ Key architectural decisions governing this repository are formalized in the cent
 - [ADR-0031: gphsm Packaging Lifecycle and Complete Deprecation of hsmutil Symlink](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0031%20-%20gphsm%20Packaging%20Lifecycle%20and%20Complete%20Deprecation%20of%20hsmutil%20Symlink.md)
 - [ADR-0032: Targeted Authentication State Persistence to /data/etc with Ephemeral /etc OverlayFS](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0032%20-%20Targeted%20Authentication%20State%20Persistence%20to%20data-etc%20with%20Ephemeral%20etc%20OverlayFS.md)
 - [ADR-0033: Real-Time Atomic Credential Synchronization and Reboot/Shutdown Flushes](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0033%20-%20Real-Time%20Atomic%20Credential%20Synchronization%20and%20Reboot-Shutdown%20Flushes.md)
+- [ADR-0035: Declarative Kas Bundle Target Configuration and Strict RAUC Packaging Verification](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Decisions/ADR-0035%20-%20Declarative%20Kas%20Bundle%20Target%20Configuration%20and%20Strict%20RAUC%20Packaging%20Verification.md)
 - [Air-Gapped RPi HSM OS Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/07%20-%20Air-Gapped%20RPi%20HSM%20OS%20Architecture.md)
 - [Air-Gapped Time Synchronization and Hardware RTC Architecture](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/08%20-%20Air-Gapped%20Time%20Synchronization%20and%20Hardware%20RTC%20Architecture.md)
 - [Build Lifecycle and Workspace Clean Routines](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Architecture/Build%20Lifecycle%20and%20Workspace%20Clean%20Routines.md)
 - [HW-084 DS3231 Real-Time Clock Module Specification](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Hardware/HW-084%20DS3231%20Real-Time%20Clock%20Module.md)
+- [Feature: Declarative Kas Bundle Target Configuration & Strict RAUC Packaging Verification](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-bundle-task-target.md)
 - [Feature: Persistent Authentication & User Account State Across Reboots](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-persist-auth-state.md)
 - [Feature: Kernel Network Stripping, Clean Subrepo Architecture, Environment Conditioning, and gphsm Workflow](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-network-strip-clean-layout.md)
 - [Feature: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-hardening-clean-console-pikms.md)
 - [Feature: Yocto 6.1 (Blacksail), HW-084 (DS3231) RTC & Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/features/yocto-blacksail-rtc-and-distclean.md)
+- [Technical Specification: Fix BitBake do_update-bundle Task Failure During make yocto-bundle](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Fix%20BitBake%20do_update-bundle%20Task%20Failure%20During%20make%20yocto-bundle.md)
 - [Technical Specification: Persistent Authentication & User Account State Across Reboots](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Persistent%20Authentication%20and%20User%20Account%20State%20Across%20Reboots.md)
 - [Technical Specification: Kernel Network Stripping, Clean Subrepo Architecture, Environment Conditioning, and gphsm Workflow](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Kernel%20Network%20Stripping,%20Clean%20Subrepo%20Architecture,%20Environment%20Conditioning,%20and%20gphsm%20Workflow.md)
 - [Technical Specification: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/HSM%20Yocto%20OS%20Hardening,%20Clean%20Console,%20U-Boot%20Network%20Deactivation,%20and%20gphsm%20CLI%20Alignment.md)
 - [Technical Specification: Yocto 6.1 Blacksail Upgrade, HW-084 DS3231 RTC Integration and Workspace Distclean](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Specification/Yocto%206.1%20Blacksail%20Upgrade,%20HW-084%20DS3231%20RTC%20Integration%20and%20Workspace%20Distclean.md)
+- [Implementation Plan: Fix BitBake do_update-bundle Task Failure During make yocto-bundle](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Fix%20BitBake%20do_update-bundle%20Task%20Failure%20During%20make%20yocto-bundle%20Implementation%20Plan.md)
 - [Implementation Plan: Persistent Authentication & User Account State Across Reboots](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Persistent%20Authentication%20and%20User%20Account%20State%20Across%20Reboots%20Implementation%20Plan.md)
 - [Implementation Plan: Kernel Network Stripping, Clean Subrepo Architecture, Environment Conditioning, and gphsm Workflow](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/Kernel%20Network%20Stripping,%20Clean%20Subrepo%20Architecture,%20Environment%20Conditioning,%20and%20gphsm%20Workflow%20Implementation%20Plan.md)
 - [Implementation Plan: HSM Yocto OS Hardening, Clean Console, U-Boot Network Deactivation, and gphsm CLI Alignment](file:///Users/gpfister/Development/Projects/gpfister/nrf52840-hsm/hsm-obsidian/Plan/HSM%20Yocto%20OS%20Hardening,%20Clean%20Console,%20U-Boot%20Network%20Deactivation,%20and%20gphsm%20CLI%20Alignment%20Implementation%20Plan.md)

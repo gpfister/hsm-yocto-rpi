@@ -47,8 +47,8 @@ build-prod: check-docker keys
 	@KAS_MACHINE=$(MACHINE) ./scripts/run-kas.sh build kas-prod.yml
 
 bundle: check-docker keys
-	@echo "==> Creating Signed RAUC A/B Update Bundle..."
-	@./scripts/create-rauc-bundle.sh
+	@echo "==> Creating Signed RAUC A/B Update Bundle (MACHINE=$(MACHINE))..."
+	@MACHINE=$(MACHINE) ./scripts/create-rauc-bundle.sh
 
 shell: check-docker keys
 	@echo "==> Launching interactive Kas shell..."

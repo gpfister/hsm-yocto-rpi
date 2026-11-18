@@ -1,0 +1,6 @@
+header:
+  version: 14
+  includes:
+    - kas-prod.yml
+
+target: update-bundle
